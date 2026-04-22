@@ -1,0 +1,104 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model user {
+  id         String   @id @default(uuid())
+  name       String
+  email      String   @unique
+  password   String
+  phone      String
+  create_at  DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  user_mappings      user_mapping[] @relation("UserMappings")
+  managed_users      user_mapping[] @relation("ReportingManager")
+  user_activities    user_activity[]
+}
+
+model company {
+  id                 String   @id @default(uuid())
+  gst_number         String   @unique
+  legal_name         String
+  address            String
+  registration_date  DateTime @default(now())
+  brand_name         String
+  company_code       String   @unique
+  create_at          DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  // Relations
+  user_mappings     user_mapping[]
+  company_mappings  company_mapping[]
+}
+
+model group_company {
+  id         String   @id @default(uuid())
+  name       String
+  group_code String   @unique
+  create_at  DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  company_mappings company_mapping[]
+}
+
+enum Status {
+  active
+  inactive
+}
+
+model user_mapping {
+  id                String   @id @default(uuid())
+  user_id           String   @db.Uuid
+  company_id        String   @db.Uuid
+  reporting_manager String?   // uuid requried checking  all fk
+  status            Status
+  designation       String
+  employee_id       String   @db.Uuid
+  create_at         DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  // FK Relations
+  user              user     @relation("UserMappings", fields: [user_id], references: [id])
+  company           company  @relation(fields: [company_id], references: [id])
+  manager           user?    @relation("ReportingManager", fields: [reporting_manager], references: [id])
+}
+
+model company_mapping {
+  id           String   @id @default(uuid())
+  company_id   String   @db.Uuid
+  group_id     String   @db.Uuid
+  create_at    DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  // FK Relations
+  company      company       @relation(fields: [company_id], references: [id])
+  group        group_company @relation(fields: [group_id], references: [id])
+}
+
+model user_activity {
+  id              String    @id @default(uuid())
+  user_id         String    @db.Uuid
+  refresh_token   String?
+  version         String?
+  ip_address      String  
+  user_agent      String
+  force_log_token String?
+  expiry_at       DateTime?
+  
+  create_at       DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  // FK Relation
+  user          user      @relation(fields: [user_id], references: [id])
+}
