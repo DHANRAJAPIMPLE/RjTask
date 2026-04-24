@@ -1,3 +1,6 @@
+// move in same file of validation
+
+
 import { z } from 'zod';
 
 export const companyOnboardingSchema = z.object({

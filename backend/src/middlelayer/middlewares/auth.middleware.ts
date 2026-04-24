@@ -5,6 +5,7 @@ import { mapAuthError } from '../utils/error-mapper.util';
 import { config } from '../config';
 import { internalPost } from '../utils/internal-fetch.util';
 import { clearAuthCookies } from '../utils/cookie.util';
+import { HashUtil } from '../../shared/utils/hash.util';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -30,26 +31,32 @@ export const authMiddleware = async (
       const versionHashFromCookie = req.cookies?.versionHash;
 
       if (refreshToken && versionHashFromCookie) {
-        // Call Backend (5001) to verify session via Refresh Token
-        const { data, ok } = await internalPost(
-          `${config.backendAuthUrl}/verify-session`,
-          {
-            refreshToken,
-            versionHashFromCookie,
-          },
+        const refreshTokenHash = HashUtil.hashToken(refreshToken);
+        const { data: activity, ok } = await internalPost<any>(
+          `${config.backendAuthUrl}/activity/get-by-token`,
+          { refreshTokenHash },
         );
 
-        if (ok && (data as { isValid: boolean }).isValid) {
-          const newAccessToken = TokenUtil.generateAccessToken({
-            userId: (data as { userId: string }).userId,
-          });
-          res.cookie('accessToken', newAccessToken, {
-            ...config.cookieOptions,
-            maxAge: config.accessTokenMaxAge,
-          });
+        if (ok && activity && activity.refreshToken) {
+          const dbVersionHash = activity.version
+            ? HashUtil.hashToken(activity.version)
+            : null;
 
-          req.user = { id: (data as { userId: string }).userId };
-          return next();
+          if (
+            dbVersionHash === versionHashFromCookie &&
+            (!activity.expiryAt || new Date(activity.expiryAt) > new Date())
+          ) {
+            const newAccessToken = TokenUtil.generateAccessToken({
+              userId: activity.userId,
+            });
+            res.cookie('accessToken', newAccessToken, {
+              ...config.cookieOptions,
+              maxAge: config.accessTokenMaxAge,
+            });
+
+            req.user = { id: activity.userId };
+            return next();
+          }
         }
       }
 
@@ -77,23 +84,25 @@ export const authMiddleware = async (
           throw new AppError(mapAuthError('Unauthorized - Invalid token'), 401);
         }
 
-        // Call Backend (5001) for session verification
-        const { data, ok } = await internalPost(
-          `${config.backendAuthUrl}/verify-session`,
-          {
-            userId: expiredPayload.userId,
-            refreshToken,
-            versionHashFromCookie,
-          },
+        const { data: activity, ok } = await internalPost<any>(
+          `${config.backendAuthUrl}/activity/get`,
+          { userId: expiredPayload.userId },
         );
 
-        if (!ok) {
+        const refreshTokenHash = HashUtil.hashToken(refreshToken);
+        const dbVersionHash =
+          activity && activity.version ? HashUtil.hashToken(activity.version) : null;
+
+        if (
+          !ok ||
+          !activity ||
+          activity.refreshToken !== refreshTokenHash ||
+          dbVersionHash !== versionHashFromCookie ||
+          (activity.expiryAt && new Date(activity.expiryAt) < new Date())
+        ) {
           clearAuthCookies(res);
           throw new AppError(
-            mapAuthError(
-              (data as { error?: string }).error ||
-                'Unauthorized - Invalid token',
-            ),
+            mapAuthError('Unauthorized - Session expired or invalid'),
             401,
           );
         }
@@ -114,20 +123,23 @@ export const authMiddleware = async (
 
     // Normal Validation: verify the still-valid token with Backend for session check
     const versionHashFromCookie = req.cookies?.versionHash;
-    const { data, ok } = await internalPost(
-      `${config.backendAuthUrl}/verify-session`,
-      {
-        userId: decoded.userId,
-        versionHashFromCookie,
-      },
+    const { data: activity, ok } = await internalPost<any>(
+      `${config.backendAuthUrl}/activity/get`,
+      { userId: decoded.userId },
     );
 
-    if (!ok) {
+    const dbVersionHash =
+      activity && activity.version ? HashUtil.hashToken(activity.version) : null;
+
+    if (
+      !ok ||
+      !activity ||
+      dbVersionHash !== versionHashFromCookie ||
+      (activity.expiryAt && new Date(activity.expiryAt) < new Date())
+    ) {
       clearAuthCookies(res);
       throw new AppError(
-        mapAuthError(
-          (data as { error?: string }).error || 'Unauthorized - Invalid token',
-        ),
+        mapAuthError('Unauthorized - Session changed or expired'),
         401,
       );
     }

@@ -8,7 +8,7 @@ import {
   companyActionSchema,
   userOnboardingSchema,
   userActionSchema,
-} from '../validators/onboarding.validator';
+} from '../validations/onboarding.validator';
 
 export class OnboardingController {
   static async initiateCompanyOnboarding(
@@ -23,8 +23,7 @@ export class OnboardingController {
       if (!initiatorId) {
         throw new AppError('Unauthorized', 401);
       }
-      console.log('validatedData', validatedData);
-      console.log('initiatorId', initiatorId);
+
 
       // Forward to Backend (5001)
       const { data, ok, status } = await internalPost(
@@ -44,7 +43,7 @@ export class OnboardingController {
 
       res.status(201).json(data);
     } catch (error) {
-      console.log('Error', error);
+
       if (error instanceof ZodError) {
         return res.status(400).json({
           error: 'Validation failed',
@@ -102,7 +101,7 @@ export class OnboardingController {
     next: NextFunction,
   ) {
     try {
-      console.log('initiateUserOnboarding req.body:', req.body);
+
       const validatedData = userOnboardingSchema.parse(req.body);
       const initiatorId = req.user?.id;
 

@@ -10,11 +10,12 @@ import { authMiddleware } from '../middlewares/auth.middleware';
  * 2. Unauthenticated users (no valid JWT) are blocked before they reach the controller.
  */
 const router = Router();
+router.use(authMiddleware);
 
 // Logic: Protected route — Fetches companies specifically mapped to the session's user
-router.post('/my-companies', authMiddleware, CompanyController.getMyCompanies);
+router.post('/my-companies', CompanyController.getMyCompanies);
 
 // Logic: Protected route — Fetches the entire corporate hierarchy and clusters
-router.post('/groups', authMiddleware, CompanyController.getGroupCompanies);
+router.post('/groups', CompanyController.getGroupCompanies);
 
 export default router;
