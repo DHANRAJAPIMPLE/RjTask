@@ -51,25 +51,32 @@ export class AuthDbController {
 
   static async login(req: Request, res: Response, next: NextFunction) {
     try {
-      const { email, password, action, ip, userAgent, force_log_token } = req.body;
+      const {
+        email,
+        password,
+        action,
+        ip,
+        userAgent,
+        forceLogToken: providedForceLogToken,
+      } = req.body;
 
-      const user = await prisma.user.findUnique({ 
+      const user = await prisma.user.findUnique({
         where: { email },
         include: {
-          user_mappings: {
+          userMappings: {
             include: {
               company: {
                 include: {
-                  company_mappings: {
+                  companyMappings: {
                     include: {
-                      group: true
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+                      group: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!user) {
@@ -81,18 +88,23 @@ export class AuthDbController {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
-      const existingActivity = await prisma.user_activity.findFirst({
-        where: { user_id: user.id }
+      const existingActivity = await prisma.userActivity.findFirst({
+        where: { userId: user.id },
       });
 
-      if (existingActivity && existingActivity.expiry_at && existingActivity.expiry_at > new Date() && existingActivity.refresh_token) {
+      if (
+        existingActivity &&
+        existingActivity.expiryAt &&
+        existingActivity.expiryAt > new Date() &&
+        existingActivity.refreshToken
+      ) {
         if (action === 0) {
           const forceLogToken = HashUtil.generateRandomToken(64);
           const forceLogTokenHash = HashUtil.hashToken(forceLogToken);
 
-          await prisma.user_activity.update({
+          await prisma.userActivity.update({
             where: { id: existingActivity.id },
-            data: { force_log_token: forceLogTokenHash }
+            data: { forceLogToken: forceLogTokenHash },
           });
 
           return res.status(409).json({
@@ -102,12 +114,15 @@ export class AuthDbController {
           });
         }
 
-        if (!force_log_token) {
+        if (!providedForceLogToken) {
           return res.status(400).json({ error: 'Force login token required' });
         }
 
-        const providedTokenHash = HashUtil.hashToken(force_log_token);
-        if (!existingActivity.force_log_token || existingActivity.force_log_token !== providedTokenHash) {
+        const providedTokenHash = HashUtil.hashToken(providedForceLogToken);
+        if (
+          !existingActivity.forceLogToken ||
+          existingActivity.forceLogToken !== providedTokenHash
+        ) {
           return res.status(401).json({ error: 'Invalid force login token' });
         }
       }
@@ -121,53 +136,54 @@ export class AuthDbController {
       const expiryAt = hoursFromNow(24);
 
       if (existingActivity) {
-        await prisma.user_activity.update({
+        await prisma.userActivity.update({
           where: { id: existingActivity.id },
           data: {
-            refresh_token: refreshTokenHash,
+            refreshToken: refreshTokenHash,
             version: nextVersion,
-            ip_address: ip,
-            user_agent: userAgent,
-            expiry_at: expiryAt,
-            force_log_token: null,
-          }
+            ipAddress: ip,
+            userAgent: userAgent,
+            expiryAt: expiryAt,
+            forceLogToken: null,
+          },
         });
       } else {
-        await prisma.user_activity.create({
+        await prisma.userActivity.create({
           data: {
-            user_id: user.id,
-            refresh_token: refreshTokenHash,
+            userId: user.id,
+            refreshToken: refreshTokenHash,
             version: nextVersion,
-            ip_address: ip,
-            user_agent: userAgent,
-            expiry_at: expiryAt,
-          }
+            ipAddress: ip,
+            userAgent: userAgent,
+            expiryAt: expiryAt,
+          },
         });
       }
 
       // Logic: Group companies by their respective groups for the response
-      const groupsMap = new Map<string, any>();
-      
-      user.user_mappings.forEach(um => {
+      const groupsMap = new Map<string, Record<string, unknown>>();
+
+      user.userMappings.forEach((um) => {
         const company = {
-          legal_name: um.company.legal_name,
-          brand_name: um.company.brand_name,
-          company_code: um.company.company_code
+          legalName: um.company.legalName,
+          brandName: um.company.brandName,
+          companyCode: um.company.companyCode,
         };
 
-        um.company.company_mappings.forEach(cm => {
+        um.company.companyMappings.forEach((cm) => {
           if (cm.group) {
-            const groupCode = cm.group.group_code;
+            const groupCode = cm.group.groupCode;
             if (!groupsMap.has(groupCode)) {
               groupsMap.set(groupCode, {
-                group_name: cm.group.name,
-                group_code: cm.group.group_code,
-                companies: []
+                groupName: cm.group.name,
+                groupCode: cm.group.groupCode,
+                companies: [],
               });
             }
             const groupObj = groupsMap.get(groupCode);
-            if (!groupObj.companies.some((c: any) => c.company_code === company.company_code)) {
-              groupObj.companies.push(company);
+            const companies = groupObj?.companies as Record<string, unknown>[];
+            if (!companies.some((c) => c.companyCode === company.companyCode)) {
+              companies.push(company);
             }
           }
         });
@@ -181,12 +197,12 @@ export class AuthDbController {
           name: user.name,
           email: user.email,
           phone: user.phone,
-          groups
+          groups,
         },
         tokens: {
           refreshToken,
-          versionHash
-        }
+          versionHash,
+        },
       });
     } catch (error) {
       next(error);
@@ -198,39 +214,50 @@ export class AuthDbController {
       const { refreshToken, userId: providedUserId } = req.body;
 
       if (!refreshToken) {
-        return res.status(401).json({ error: 'Unauthorized - Refresh token missing' });
+        return res
+          .status(401)
+          .json({ error: 'Unauthorized - Refresh token missing' });
       }
 
       let userId = providedUserId;
 
       if (!userId) {
         const refreshTokenHash = HashUtil.hashToken(refreshToken);
-        const activityByToken = await prisma.user_activity.findFirst({
-          where: { refresh_token: refreshTokenHash }
+        const activityByToken = await prisma.userActivity.findFirst({
+          where: { refreshToken: refreshTokenHash },
         });
-        userId = activityByToken?.user_id || null;
+        userId = activityByToken?.userId || null;
       }
 
       if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized - Invalid session' });
+        return res
+          .status(401)
+          .json({ error: 'Unauthorized - Invalid session' });
       }
 
-      const activity = await prisma.user_activity.findFirst({
-        where: { user_id: userId },
-        include: { user: true }
+      const activity = await prisma.userActivity.findFirst({
+        where: { userId: userId },
+        include: { user: true },
       });
 
-      if (!activity || !activity.refresh_token) {
-        return res.status(401).json({ error: 'Unauthorized - Invalid token', clearCookies: true });
+      if (!activity || !activity.refreshToken) {
+        return res
+          .status(401)
+          .json({ error: 'Unauthorized - Invalid token', clearCookies: true });
       }
 
       const refreshTokenHash = HashUtil.hashToken(refreshToken);
-      if (activity.refresh_token !== refreshTokenHash) {
-        return res.status(401).json({ error: 'User already logged in another device', clearCookies: true });
+      if (activity.refreshToken !== refreshTokenHash) {
+        return res.status(401).json({
+          error: 'User already logged in another device',
+          clearCookies: true,
+        });
       }
 
-      if (activity.expiry_at && activity.expiry_at < new Date()) {
-        return res.status(401).json({ error: 'Unauthorized - Invalid token', clearCookies: true });
+      if (activity.expiryAt && activity.expiryAt < new Date()) {
+        return res
+          .status(401)
+          .json({ error: 'Unauthorized - Invalid token', clearCookies: true });
       }
 
       const nextVersion = bumpVersion(activity.version);
@@ -241,21 +268,21 @@ export class AuthDbController {
 
       const expiryAt = hoursFromNow(24);
 
-      await prisma.user_activity.update({
+      await prisma.userActivity.update({
         where: { id: activity.id },
         data: {
-          refresh_token: newRefreshTokenHash,
+          refreshToken: newRefreshTokenHash,
           version: nextVersion,
-          expiry_at: expiryAt,
-        }
+          expiryAt: expiryAt,
+        },
       });
 
       res.status(200).json({
-        userId: activity.user_id,
+        userId: activity.userId,
         tokens: {
           refreshToken: newRefreshToken,
-          versionHash
-        }
+          versionHash,
+        },
       });
     } catch (error) {
       next(error);
@@ -267,7 +294,9 @@ export class AuthDbController {
       const { userId } = req.body;
 
       if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized - User ID missing' });
+        return res
+          .status(401)
+          .json({ error: 'Unauthorized - User ID missing' });
       }
 
       const user = await prisma.user.findUnique({
@@ -276,28 +305,28 @@ export class AuthDbController {
           name: true,
           email: true,
           phone: true,
-          user_mappings: {
+          userMappings: {
             include: {
               company: {
                 select: {
-                  legal_name: true,
-                  brand_name: true,
-                  company_code: true,
-                  company_mappings: {
+                  legalName: true,
+                  brandName: true,
+                  companyCode: true,
+                  companyMappings: {
                     include: {
                       group: {
                         select: {
                           name: true,
-                          group_code: true
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+                          groupCode: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!user) {
@@ -305,29 +334,30 @@ export class AuthDbController {
       }
 
       // Logic: Group companies by their respective groups
-      const groupsMap = new Map<string, any>();
-      
-      user.user_mappings.forEach(um => {
+      const groupsMap = new Map<string, Record<string, unknown>>();
+
+      user.userMappings.forEach((um) => {
         const company = {
-          legal_name: um.company.legal_name,
-          brand_name: um.company.brand_name,
-          company_code: um.company.company_code
+          legalName: um.company.legalName,
+          brandName: um.company.brandName,
+          companyCode: um.company.companyCode,
         };
 
-        um.company.company_mappings.forEach(cm => {
+        um.company.companyMappings.forEach((cm) => {
           if (cm.group) {
-            const groupCode = cm.group.group_code;
+            const groupCode = cm.group.groupCode;
             if (!groupsMap.has(groupCode)) {
               groupsMap.set(groupCode, {
-                group_name: cm.group.name,
-                group_code: cm.group.group_code,
-                companies: []
+                groupName: cm.group.name,
+                groupCode: cm.group.groupCode,
+                companies: [],
               });
             }
             // Logic: Avoid duplicate companies in the same group
             const groupObj = groupsMap.get(groupCode);
-            if (!groupObj.companies.some((c: any) => c.company_code === company.company_code)) {
-              groupObj.companies.push(company);
+            const companies = groupObj?.companies as Record<string, unknown>[];
+            if (!companies.some((c) => c.companyCode === company.companyCode)) {
+              companies.push(company);
             }
           }
         });
@@ -340,8 +370,8 @@ export class AuthDbController {
           name: user.name,
           email: user.email,
           phone: user.phone,
-          groups
-        }
+          groups,
+        },
       });
     } catch (error) {
       next(error);
@@ -358,9 +388,9 @@ export class AuthDbController {
 
       const hash = HashUtil.hashToken(refreshToken);
 
-      const result = await prisma.user_activity.updateMany({
-        where: { refresh_token: hash },
-        data: { refresh_token: null, version: null, expiry_at: null }
+      const result = await prisma.userActivity.updateMany({
+        where: { refreshToken: hash },
+        data: { refreshToken: null, version: null, expiryAt: null },
       });
 
       if (result.count === 0) {
@@ -377,31 +407,40 @@ export class AuthDbController {
     try {
       const { userId, refreshToken, versionHashFromCookie } = req.body;
 
-      const activity = await prisma.user_activity.findFirst({
-        where: userId ? { user_id: userId } : { refresh_token: HashUtil.hashToken(refreshToken) }
+      const activity = await prisma.userActivity.findFirst({
+        where: userId
+          ? { userId: userId }
+          : { refreshToken: HashUtil.hashToken(refreshToken) },
       });
 
-      if (!activity || !activity.refresh_token) {
+      if (!activity || !activity.refreshToken) {
         return res.status(401).json({ error: 'Unauthorized - Invalid token' });
       }
 
-      const dbVersionHash = activity.version ? HashUtil.hashToken(activity.version) : null;
+      const dbVersionHash = activity.version
+        ? HashUtil.hashToken(activity.version)
+        : null;
 
       if (dbVersionHash !== versionHashFromCookie) {
-        return res.status(401).json({ error: 'User already logged in another device' });
+        return res
+          .status(401)
+          .json({ error: 'User already logged in another device' });
       }
 
-      if (activity.expiry_at && activity.expiry_at < new Date()) {
+      if (activity.expiryAt && activity.expiryAt < new Date()) {
         return res.status(401).json({ error: 'Unauthorized - Invalid token' });
       }
 
-      if (refreshToken && activity.refresh_token !== HashUtil.hashToken(refreshToken)) {
+      if (
+        refreshToken &&
+        activity.refreshToken !== HashUtil.hashToken(refreshToken)
+      ) {
         return res.status(401).json({ error: 'Unauthorized - Invalid token' });
       }
 
       res.status(200).json({
         isValid: true,
-        userId: activity.user_id
+        userId: activity.userId,
       });
     } catch (error) {
       next(error);

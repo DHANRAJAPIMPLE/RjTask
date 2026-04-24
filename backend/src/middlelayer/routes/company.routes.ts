@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { CompanyController } from '../controllers/company.controller';
-import type { AuthRequest } from '../middlewares/auth.middleware';
 import { authMiddleware } from '../middlewares/auth.middleware';
 
 /**
@@ -19,4 +18,3 @@ router.post('/my-companies', authMiddleware, CompanyController.getMyCompanies);
 router.post('/groups', authMiddleware, CompanyController.getGroupCompanies);
 
 export default router;
-

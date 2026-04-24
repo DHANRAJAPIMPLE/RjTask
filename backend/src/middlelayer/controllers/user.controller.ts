@@ -7,7 +7,9 @@ export class UserController {
   static async fetchAllUsers(req: Request, res: Response, next: NextFunction) {
     try {
       // Logic: Forward request to Backend DB Service
-      const { data, ok, status } = await internalPost(`${process.env.BACKEND_URL || 'http://localhost:5001'}/internal/user/fetch-all`);
+      const { data, ok, status } = await internalPost(
+        `${config.backendUrl}/internal/user/fetch-all`,
+      );
 
       if (!ok) {
         throw new AppError(data.error || 'Failed to fetch users', status);

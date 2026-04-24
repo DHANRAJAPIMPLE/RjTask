@@ -13,16 +13,25 @@ export class AuthController {
       const { email, password, name, phone } = req.body;
 
       // Forward to Backend (5001) for DB operations
-      const { data, ok, status } = await internalPost(`${config.backendAuthUrl}/register`, { 
-        email, password, name, phone 
-      });
+      const { data, ok, status } = await internalPost(
+        `${config.backendAuthUrl}/register`,
+        {
+          email,
+          password,
+          name,
+          phone,
+        },
+      );
 
       if (!ok) {
-        throw new AppError(mapAuthError(data.error || 'Registration failed'), status);
+        throw new AppError(
+          mapAuthError(data.error || 'Registration failed'),
+          status,
+        );
       }
 
       // Logic: Strip ID from user object before sending to frontend
-      const { id, ...userWithoutId } = data.user;
+      const { id: _, ...userWithoutId } = data.user;
 
       res.status(201).json({
         message: 'User registered successfully',
@@ -35,36 +44,49 @@ export class AuthController {
 
   static async login(req: Request, res: Response, next: NextFunction) {
     try {
-      const { email, password, action, force_log_token } = req.body;
+      const { email, password, action, forceLogToken } = req.body;
       const ip = requestIp.getClientIp(req) || 'unknown';
       const userAgent = req.headers['user-agent'] || 'unknown';
 
       // Forward to Backend (5001) for DB and Auth logic
-      const { data, ok, status } = await internalPost(`${config.backendAuthUrl}/login`, { 
-        email, password, action, ip, userAgent, force_log_token 
-      });
+      const { data, ok, status } = await internalPost(
+        `${config.backendAuthUrl}/login`,
+        {
+          email,
+          password,
+          action,
+          ip,
+          userAgent,
+          forceLogToken,
+        },
+      );
 
       if (status === 409) {
         return res.status(409).json(data);
       }
 
       if (!ok) {
-        throw new AppError(mapAuthError(data.error || 'Invalid credentials'), status);
+        throw new AppError(
+          mapAuthError(data.error || 'Invalid credentials'),
+          status,
+        );
       }
 
       // Logic: Generate Access Token in Middle Layer
-      const accessToken = TokenUtil.generateAccessToken({ userId: data.user.id });
+      const accessToken = TokenUtil.generateAccessToken({
+        userId: (data.user as { id: string }).id,
+      });
 
       // Set Cookies in Middle Layer
       const { tokens, user } = data;
       setAuthCookies(res, { accessToken, ...tokens });
 
       // Logic: Strip ID from user object before sending to frontend
-      const { id, ...userWithoutId } = user;
+      const { id: _, ...userWithoutId } = user as { id: string };
 
       res.status(200).json({
         message: 'Login successful',
-        user: userWithoutId
+        user: userWithoutId,
       });
     } catch (error) {
       next(error);
@@ -73,7 +95,8 @@ export class AuthController {
 
   static async refreshToken(req: Request, res: Response, next: NextFunction) {
     try {
-      const accessTokenFromCookie = req.cookies?.accessToken || req.headers.authorization?.split(' ')[1];
+      const accessTokenFromCookie =
+        req.cookies?.accessToken || req.headers.authorization?.split(' ')[1];
       const refreshToken = req.cookies?.refreshToken;
 
       if (!refreshToken) {
@@ -83,24 +106,35 @@ export class AuthController {
       // Decode existing token to get userId (if possible) for the backend
       let userId = null;
       if (accessTokenFromCookie) {
-        const decoded = TokenUtil.decodeToken(accessTokenFromCookie) as any;
+        const decoded = TokenUtil.decodeToken(accessTokenFromCookie) as {
+          userId: string;
+        } | null;
         userId = decoded?.userId;
       }
 
       // Forward to Backend (5001)
-      const { data, ok, status } = await internalPost(`${config.backendAuthUrl}/refresh`, { 
-        refreshToken, userId 
-      });
+      const { data, ok, status } = await internalPost(
+        `${config.backendAuthUrl}/refresh`,
+        {
+          refreshToken,
+          userId,
+        },
+      );
 
       if (!ok) {
         if (data.clearCookies) {
           clearAuthCookies(res);
         }
-        throw new AppError(mapAuthError(data.error || 'Token refresh failed'), status);
+        throw new AppError(
+          mapAuthError(data.error || 'Token refresh failed'),
+          status,
+        );
       }
 
       // Logic: Generate new Access Token in Middle Layer
-      const newAccessToken = TokenUtil.generateAccessToken({ userId: data.userId });
+      const newAccessToken = TokenUtil.generateAccessToken({
+        userId: data.userId as string,
+      });
 
       // Update Cookies
       setAuthCookies(res, { accessToken: newAccessToken, ...data.tokens });
@@ -111,7 +145,11 @@ export class AuthController {
     }
   }
 
-  static async me(req: any, res: Response, next: NextFunction) {
+  static async me(
+    req: Request & { user?: { id: string } },
+    res: Response,
+    next: NextFunction,
+  ) {
     try {
       const userId = req.user?.id;
 
@@ -120,9 +158,12 @@ export class AuthController {
       }
 
       // Forward to Backend (5001) to fetch full profile and groups
-      const { data, ok, status } = await internalPost(`${config.backendAuthUrl}/me`, { 
-        userId 
-      });
+      const { data, ok, status } = await internalPost(
+        `${config.backendAuthUrl}/me`,
+        {
+          userId,
+        },
+      );
 
       if (!ok) {
         throw new AppError(data.error || 'Failed to fetch user data', status);
@@ -143,9 +184,12 @@ export class AuthController {
       }
 
       // Forward to Backend (5001)
-      const { data, ok, status } = await internalPost(`${config.backendAuthUrl}/logout`, { 
-        refreshToken 
-      });
+      const { data, ok, status } = await internalPost(
+        `${config.backendAuthUrl}/logout`,
+        {
+          refreshToken,
+        },
+      );
 
       if (!ok) {
         throw new AppError(mapAuthError(data.error || 'Logout failed'), status);

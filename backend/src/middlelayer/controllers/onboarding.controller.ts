@@ -1,117 +1,179 @@
+import { ZodError } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
 import { AppError } from '../../shared/middlewares/error.middleware';
 import { config } from '../config';
 import { internalPost } from '../utils/internal-fetch.util';
-import { companyOnboardingSchema, companyActionSchema, userOnboardingSchema, userActionSchema } from '../validators/onboarding.validator';
+import {
+  companyOnboardingSchema,
+  companyActionSchema,
+  userOnboardingSchema,
+  userActionSchema,
+} from '../validators/onboarding.validator';
 
 export class OnboardingController {
-  static async initiateCompanyOnboarding(req: any, res: Response, next: NextFunction) {
+  static async initiateCompanyOnboarding(
+    req: Request & { user?: { id: string } },
+    res: Response,
+    next: NextFunction,
+  ) {
     try {
       const validatedData = companyOnboardingSchema.parse(req.body);
-      const initiator_id = req.user?.id;
+      const initiatorId = req.user?.id;
 
-      if (!initiator_id) {
+      if (!initiatorId) {
         throw new AppError('Unauthorized', 401);
       }
+      console.log('validatedData', validatedData);
+      console.log('initiatorId', initiatorId);
 
       // Forward to Backend (5001)
-      const { data, ok, status } = await internalPost(`${config.backendUrl}/internal/onboarding/company/initiate`, {
-        ...validatedData,
-        initiator_id
-      });
+      const { data, ok, status } = await internalPost(
+        `${config.backendUrl}/internal/onboarding/company/initiate`,
+        {
+          ...validatedData,
+          initiatorId,
+        },
+      );
 
       if (!ok) {
-        throw new AppError(data.error || 'Failed to initiate onboarding', status);
+        throw new AppError(
+          data.error || 'Failed to initiate onboarding',
+          status,
+        );
       }
 
       res.status(201).json(data);
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ error: 'Validation failed', details: error.errors });
+    } catch (error) {
+      console.log('Error', error);
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: error.errors,
+        });
       }
       next(error);
     }
   }
 
-  static async actionCompanyOnboarding(req: any, res: Response, next: NextFunction) {
+  static async actionCompanyOnboarding(
+    req: Request & { user?: { id: string } },
+    res: Response,
+    next: NextFunction,
+  ) {
     try {
       const validatedData = companyActionSchema.parse(req.body);
-      const approver_id = req.user?.id;
+      const approverId = req.user?.id;
 
-      if (!approver_id) {
+      if (!approverId) {
         throw new AppError('Unauthorized', 401);
       }
 
       // Forward to Backend (5001)
-      const { data, ok, status } = await internalPost(`${config.backendUrl}/internal/onboarding/company/action`, {
-        ...validatedData,
-        approver_id
-      });
+      const { data, ok, status } = await internalPost(
+        `${config.backendUrl}/internal/onboarding/company/action`,
+        {
+          ...validatedData,
+          approverId,
+        },
+      );
 
       if (!ok) {
-        throw new AppError(data.error || 'Failed to process onboarding action', status);
+        throw new AppError(
+          data.error || 'Failed to process onboarding action',
+          status,
+        );
       }
 
       res.status(200).json(data);
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ error: 'Validation failed', details: error.errors });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: error.errors,
+        });
       }
       next(error);
     }
   }
 
-  static async initiateUserOnboarding(req: any, res: Response, next: NextFunction) {
+  static async initiateUserOnboarding(
+    req: Request & { user?: { id: string } },
+    res: Response,
+    next: NextFunction,
+  ) {
     try {
+      console.log('initiateUserOnboarding req.body:', req.body);
       const validatedData = userOnboardingSchema.parse(req.body);
-      const initiator_id = req.user?.id;
+      const initiatorId = req.user?.id;
 
-      if (!initiator_id) {
+      if (!initiatorId) {
         throw new AppError('Unauthorized', 401);
       }
 
       // Forward to Backend (5001)
-      const { data, ok, status } = await internalPost(`${config.backendUrl}/internal/onboarding/user/initiate`, {
-        ...validatedData,
-        initiator_id
-      });
+      const { data, ok, status } = await internalPost(
+        `${config.backendUrl}/internal/onboarding/user/initiate`,
+        {
+          ...validatedData,
+          initiatorId,
+        },
+      );
 
       if (!ok) {
-        throw new AppError(data.error || 'Failed to initiate user onboarding', status);
+        throw new AppError(
+          data.error || 'Failed to initiate user onboarding',
+          status,
+        );
       }
 
       res.status(201).json(data);
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ error: 'Validation failed', details: error.errors });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: error.errors,
+        });
       }
       next(error);
     }
   }
 
-  static async actionUserOnboarding(req: any, res: Response, next: NextFunction) {
+  static async actionUserOnboarding(
+    req: Request & { user?: { id: string } },
+    res: Response,
+    next: NextFunction,
+  ) {
     try {
       const validatedData = userActionSchema.parse(req.body);
-      const approver_id = req.user?.id;
+      const approverId = req.user?.id;
 
-      if (!approver_id) {
+      if (!approverId) {
         throw new AppError('Unauthorized', 401);
       }
 
       // Forward to Backend (5001)
-      const { data, ok, status } = await internalPost(`${config.backendUrl}/internal/onboarding/user/action`, {
-        ...validatedData,
-        approver_id
-      });
+      const { data, ok, status } = await internalPost(
+        `${config.backendUrl}/internal/onboarding/user/action`,
+        {
+          ...validatedData,
+          approverId,
+        },
+      );
 
       if (!ok) {
-        throw new AppError(data.error || 'Failed to process user onboarding action', status);
+        throw new AppError(
+          data.error || 'Failed to process user onboarding action',
+          status,
+        );
       }
 
       res.status(200).json(data);
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        return res.status(400).json({ error: 'Validation failed', details: error.errors });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: error.errors,
+        });
       }
       next(error);
     }

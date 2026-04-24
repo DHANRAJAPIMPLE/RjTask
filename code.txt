@@ -1,0 +1,21 @@
+const safeName = request.new_node_name.trim().replace(/[^a-zA-Z0-9_]/g, '_').toUpperCase();
+const newPath = `${parentPath}.${safeName}`;
+
+
+
+
+
+
+const safeRootPath = request.company_code.replace(/[^a-zA-Z0-9_]/g, '_');
+
+    await client.query(
+      `INSERT INTO org_structure 
+       (id, company_uuid, node_path, node_name, node_type, parent_id)
+       VALUES ($1, $2, $3::ltree, $4, 'ROOT', NULL)`,
+      [
+        rootNodeId, 
+        companyId, 
+        safeRootPath, // The path for root is just its own name/code
+        data.companyName, // The Root Node is usually named after the Company
+      ]
+    );

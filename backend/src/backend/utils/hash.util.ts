@@ -22,6 +22,9 @@ export class HashUtil {
 
   static hashToken(token: string): string {
     const salt = process.env.HASH_SECRET || 'default_backend_salt';
-    return crypto.createHash('sha256').update(token + salt).digest('hex');
+    return crypto
+      .createHash('sha256')
+      .update(token + salt)
+      .digest('hex');
   }
 }

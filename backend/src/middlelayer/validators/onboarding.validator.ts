@@ -1,24 +1,31 @@
 import { z } from 'zod';
 
 export const companyOnboardingSchema = z.object({
-  group_name: z.string().optional(),
-  group_code: z.string().optional(),
-  remarks_code: z.string().optional(),
-  companies: z.object({
-    legal_name: z.string().min(1, 'Legal name is required'),
-    gst: z.string().regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GST format'),
-    idcode: z.string().min(1, 'ID Code is required'),
-    iecode: z.string().min(1, 'IE Code is required'),
-    address: z.string().min(1, 'Address is required'),
-    brandname: z.string().min(1, 'Brand name is required'),
+  group: z.object({
+    name: z.string().min(1, 'Group name is required'),
+    groupCode: z.string().nullable().optional(),
+    remarks: z.string().nullable().optional(),
   }),
-  signatories: z.array(z.object({
-    name: z.string().min(1, 'Name is required'),
-    email: z.string().email('Invalid email format'),
-    phone: z.string().min(10, 'Phone must be at least 10 characters'),
-    designation: z.string().min(1, 'Designation is required'),
-    employeeId: z.string().optional(),
-  })).min(1, 'At least one signatory is required'),
+  company: z.object({
+    companyCode: z.string().nullable().optional(),
+    name: z.string().min(1, 'Company name is required'),
+    gst: z.string().min(1, 'GST is required'),
+    brand: z.string().min(1, 'Brand name is required'),
+    ieCode: z.string().min(1, 'IE Code is required'),
+    registeredAt: z.string().min(1, 'Registration date is required'),
+    address: z.string().min(1, 'Address is required'),
+  }),
+  signatories: z
+    .array(
+      z.object({
+        name: z.string().min(1, 'Name is required'),
+        email: z.string().email('Invalid email format'),
+        phone: z.string().min(10, 'Phone must be at least 10 characters'),
+        designation: z.string().min(1, 'Designation is required'),
+        employeeId: z.string().optional(),
+      }),
+    )
+    .min(1, 'At least one signatory is required'),
 });
 
 export const companyActionSchema = z.object({
@@ -28,14 +35,27 @@ export const companyActionSchema = z.object({
 });
 
 export const userOnboardingSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email format'),
-  phone: z.string().min(10, 'Phone must be at least 10 characters'),
-  reporting_manager_email: z.string().email('Invalid manager email format'),
-  designations: z.string().min(1, 'Designation is required'),
-  employee_Id: z.string().min(1, 'Employee ID is required'),
-  group_code: z.string().optional(),
-  company_code: z.string().optional(),
+  basicDetails: z.object({
+    name: z.string().min(1, 'Name is required'),
+    email: z.string().email('Invalid email format'),
+    phone: z.string().min(10, 'Phone must be at least 10 characters'),
+    incorporationDate: z.string().optional(),
+    designation: z.string().min(1, 'Designation is required'),
+    employeeId: z.string().min(1, 'Employee ID is required'),
+    reportingManager: z.string().email('Invalid manager email format'),
+  }),
+  permissions: z
+    .array(
+      z.object({
+        accessType: z.string().min(1, 'Access type is required'),
+        roleName: z.string().min(1, 'Role name is required'),
+        roleCategory: z.string().min(1, 'Role category is required'),
+        roleSubCategory: z.string().min(1, 'Role sub-category is required'),
+        nodeName: z.string().min(1, 'Node name is required'),
+        nodePath: z.string().min(1, 'Node path is required'),
+      }),
+    )
+    .optional(),
 });
 
 export const userActionSchema = z.object({

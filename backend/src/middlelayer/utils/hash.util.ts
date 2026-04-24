@@ -35,7 +35,9 @@ export class HashUtil {
    * (so even if the DB is leaked, actual login tokens remain secret).
    */
   static hashToken(token: string): string {
-    return crypto.createHash('sha256').update(token + process.env.HASH_SECRET).digest('hex');
+    return crypto
+      .createHash('sha256')
+      .update(token + process.env.HASH_SECRET)
+      .digest('hex');
   }
 }
-

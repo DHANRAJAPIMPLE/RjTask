@@ -7,22 +7,22 @@ interface UserData {
   name: string;
   email: string;
   phone: string;
-  createAT: string;
-  'copamny name': string;
-  reportingmanger: string;
-  designations: string;
-  'empoyee-id': string;
+  createdAt: string;
+  companyName: string;
+  reportingManager: string;
+  designation: string;
+  employeeId: string;
 }
 
 interface FetchAllResponse {
-  ative: UserData[];
+  active: UserData[];
   inactive: UserData[];
 }
 
 const UsersListView = () => {
   const [data, setData] = useState<FetchAllResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'ative' | 'inactive'>('ative');
+  const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -49,22 +49,22 @@ const UsersListView = () => {
     );
   }
 
-  const users = activeTab === 'ative' ? data?.ative : data?.inactive;
+  const users = activeTab === 'active' ? data?.active : data?.inactive;
 
   return (
     <div className="space-y-8">
       {/* Status Toggle */}
       <div className="flex p-1.5 bg-slate-100 rounded-[2rem] w-fit">
         <button
-          onClick={() => setActiveTab('ative')}
+          onClick={() => setActiveTab('active')}
           className={`flex items-center gap-3 px-8 py-3.5 rounded-[1.7rem] font-black text-sm transition-all ${
-            activeTab === 'ative' 
+            activeTab === 'active' 
             ? 'bg-white text-indigo-600 shadow-xl shadow-indigo-100' 
             : 'text-slate-500 hover:text-slate-700'
           }`}
         >
           <UserCheck size={18} />
-          Active Members ({data?.ative.length || 0})
+          Active Members ({data?.active.length || 0})
         </button>
         <button
           onClick={() => setActiveTab('inactive')}
@@ -89,7 +89,7 @@ const UsersListView = () => {
             >
               <div className="absolute top-0 right-0 p-8">
                 <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                  activeTab === 'ative' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                  activeTab === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
                 }`}>
                   {activeTab}
                 </span>
@@ -99,7 +99,7 @@ const UsersListView = () => {
                 {/* Profile Section */}
                 <div className="flex items-center gap-6 min-w-[300px]">
                   <div className={`w-20 h-20 rounded-3xl flex items-center justify-center text-white text-2xl font-black shadow-lg ${
-                    activeTab === 'ative' ? 'bg-gradient-to-tr from-indigo-600 to-violet-600' : 'bg-slate-400'
+                    activeTab === 'active' ? 'bg-gradient-to-tr from-indigo-600 to-violet-600' : 'bg-slate-400'
                   }`}>
                     {user.name.charAt(0).toUpperCase()}
                   </div>
@@ -108,7 +108,7 @@ const UsersListView = () => {
                       {user.name}
                     </h3>
                     <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-                      {user.designations} • {user['empoyee-id']}
+                      {user.designation} • {user.employeeId}
                     </p>
                   </div>
                 </div>
@@ -135,13 +135,13 @@ const UsersListView = () => {
                       <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover/item:bg-indigo-50 group-hover/item:text-indigo-600 transition-all">
                         <Building size={14} />
                       </div>
-                      <span className="text-sm font-bold">{user['copamny name']}</span>
+                      <span className="text-sm font-bold">{user.companyName}</span>
                     </div>
                     <div className="flex items-center gap-3 text-slate-500 group/item">
                       <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover/item:bg-indigo-50 group-hover/item:text-indigo-600 transition-all">
                         <UserIcon size={14} />
                       </div>
-                      <span className="text-sm font-bold italic">Mgr: {user.reportingmanger}</span>
+                      <span className="text-sm font-bold italic">Mgr: {user.reportingManager}</span>
                     </div>
                   </div>
 
@@ -150,7 +150,7 @@ const UsersListView = () => {
                       <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover/item:bg-indigo-50 group-hover/item:text-indigo-600 transition-all">
                         <Calendar size={14} />
                       </div>
-                      <span className="text-sm font-bold">Joined: {user.createAT}</span>
+                      <span className="text-sm font-bold">Joined: {user.createdAt}</span>
                     </div>
                   </div>
                 </div>

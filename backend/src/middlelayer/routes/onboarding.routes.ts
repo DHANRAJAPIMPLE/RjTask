@@ -7,7 +7,10 @@ const router = Router();
 // All onboarding routes require authentication
 router.use(authMiddleware);
 
-router.post('/company/initiate', OnboardingController.initiateCompanyOnboarding);
+router.post(
+  '/company/initiate',
+  OnboardingController.initiateCompanyOnboarding,
+);
 router.post('/company/action', OnboardingController.actionCompanyOnboarding);
 
 router.post('/user/initiate', OnboardingController.initiateUserOnboarding);
