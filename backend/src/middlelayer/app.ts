@@ -3,10 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth.routes';
 import companyRoutes from './routes/company.routes';
-import userRoutes from './routes/user.routes';
-import onboardingRoutes from './routes/onboarding.routes';
-import rolesRoutes from './routes/roles.routes';
-import orgRoutes from './routes/org.routes';
+import adminRoutes from './routes/admin.routes';
 import { createErrorMiddleware } from '../shared/middlewares/error.middleware';
 const allowedOrigins = ['http://localhost:5173', 'http://192.168.1.7:8080'];
 const app = express();
@@ -19,29 +16,22 @@ app.use(
       } else {
         callback(new Error('Not allowed by CORS'));
       }
-    }, // Allow all for dev, or specify frontend URL
+    }, 
     credentials: true,
   }),
 );
 app.use(express.json());
 app.use(cookieParser());
 
-// Request Logger
+
 
 // Routes
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/company', companyRoutes);
-app.use('/api/v1/users', userRoutes);
-app.use('/api/v1/onboarding', onboardingRoutes);
-app.use('/api/v1/roles', rolesRoutes);
-app.use('/api/v1/org', orgRoutes);
-
-// Health check
-app.get('/', (req, res) => {
-  res.json({ message: 'middle layer server is running with Auth support' });
-});
+app.use('/api/v1/company-settings', companyRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // Error handling middleware (should be last)
+
 app.use(createErrorMiddleware('MiddleLayer'));
 app.use((req, res, next) => {
   if (allowedOrigins.includes(req.headers.origin)) {

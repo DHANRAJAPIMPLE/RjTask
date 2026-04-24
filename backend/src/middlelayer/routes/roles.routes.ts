@@ -1,13 +1,13 @@
-import { Router } from 'express';
-import { RolesController } from '../controllers/roles.controller';
-import { authMiddleware } from '../middlewares/auth.middleware';
+// import { Router } from 'express';
+// import { RolesController } from '../controllers/roles.controller';
+// import { authMiddleware } from '../middlewares/auth.middleware';
 
-const router = Router();
+// const router = Router();
 
-// All roles routes require authentication
-router.use(authMiddleware);
+// // All roles routes require authentication
+// router.use(authMiddleware);
 
-router.post('/create', RolesController.createRoles);
-router.post('/fetch-all', RolesController.fetchAllRoles);
 
-export default router;
+// router.post('/fetch-all', RolesController.fetchAllRoles);
+
+// export default router;

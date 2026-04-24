@@ -96,7 +96,7 @@ export const companyOnboardingSchema = z.object({
       })
     )
     .min(1, 'At least one signatory is required')
-    .max(10, 'Maximum 10 signatories allowed'),
+    .max(2, 'Maximum 2 signatories allowed'),
 });
 
 export const companyActionSchema = z.object({
@@ -111,7 +111,7 @@ export const userOnboardingSchema = z.object({
       .string()
       .trim()
       .min(2, 'Name must be at least 2 characters')
-      .max(100, 'Name too long'),
+      .max(20, 'Name too long'),
     email: z
       .string()
       .trim()

@@ -25,6 +25,7 @@ export const authMiddleware = async (
   try {
     const token =
       req.cookies?.accessToken || req.headers.authorization?.split(' ')[1];
+      
 
     if (!token) {
       const refreshToken = req.cookies?.refreshToken;

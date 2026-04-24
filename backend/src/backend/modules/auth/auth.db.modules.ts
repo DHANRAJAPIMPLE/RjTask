@@ -109,6 +109,7 @@ export class AuthDbController {
       next(error);
     }
   }
+
   static async getActivityByToken(req: Request, res: Response, next: NextFunction) {
     try {
       const { refreshTokenHash } = req.body;

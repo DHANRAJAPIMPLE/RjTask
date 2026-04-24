@@ -1,14 +1,14 @@
-import { Router } from 'express';
-import { OrgStructureController } from '../controllers/org.controller';
-import { authMiddleware } from '../middlewares/auth.middleware';
+// import { Router } from 'express';
+// import { OrgStructureController } from '../controllers/org.controller';
+// import { authMiddleware } from '../middlewares/auth.middleware';
 
-const router = Router();
+// const router = Router();
 
-// All org structure routes require authentication
-router.use(authMiddleware);
+// // All org structure routes require authentication
+// router.use(authMiddleware);
 
-router.post('/initiate', OrgStructureController.initiateOrgRequest);
-router.post('/approve', OrgStructureController.approveOrgRequest);
-router.post('/fetch', OrgStructureController.fetchOrgStructure);
+// router.post('/initiate', OrgStructureController.initiateOrgRequest);
+// router.post('/approve', OrgStructureController.approveOrgRequest);
+// router.post('/fetch', OrgStructureController.fetchOrgStructure);
 
-export default router;
+// export default router;
