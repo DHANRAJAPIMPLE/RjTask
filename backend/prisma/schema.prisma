@@ -192,8 +192,6 @@ model OrgStructureReq {
   initiator User     @relation("OrgReqInitiator", fields: [initiatorId], references: [id])
   approver  User?    @relation("OrgReqApprover", fields: [approverId], references: [id])
   company   Company  @relation(fields: [companyId], references: [id])
-
-
 }
 
 model OrgStructure {
