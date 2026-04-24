@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../lib/prisma';
 import { HashUtil } from '../../../shared/utils/hash.util';
+import { AccessUtil } from '../../utils/access.util';
 
 export class OnboardingDbController {
   private static normalizeCodeNamePart(value: string): string {
@@ -113,6 +114,7 @@ export class OnboardingDbController {
             signatories,
           },
           status: 'pending',
+          accessibleBy: await AccessUtil.getGlobalAccessUserIds(),
         },
       });
 
@@ -142,6 +144,12 @@ export class OnboardingDbController {
         return res
           .status(400)
           .json({ error: 'Onboarding request already processed' });
+      }
+
+      if (!AccessUtil.isUserPermitted(approverId, onboarding.accessibleBy)) {
+        return res.status(403).json({
+          error: 'Unauthorized: You do not have permission to process this request',
+        });
       }
 
       if (action === 'reject') {
@@ -386,6 +394,7 @@ export class OnboardingDbController {
             permissions,
           },
           status: 'pending',
+          accessibleBy: await AccessUtil.getGlobalAccessUserIds(),
         },
       });
 
@@ -413,6 +422,12 @@ export class OnboardingDbController {
 
       if (onboarding.status !== 'pending') {
         return res.status(400).json({ error: 'Request already processed' });
+      }
+
+      if (!AccessUtil.isUserPermitted(approverId, onboarding.accessibleBy)) {
+        return res.status(403).json({
+          error: 'Unauthorized: You do not have permission to process this request',
+        });
       }
 
       if (action === 'reject') {

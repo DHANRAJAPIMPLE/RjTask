@@ -144,6 +144,7 @@ model UserOnboarding {
   createdAt    DateTime         @default(now())
   updatedAt   DateTime         @updatedAt 
   approvalRemark String?       
+  accessibleBy  String[]         @default([])
 
   // Relations
   initiator User  @relation("UserOnboardingInitiator", fields: [initiatorId], references: [id])
@@ -170,6 +171,7 @@ model CompanyOnboarding {
   createdAt      DateTime         @default(now())
   updatedAt     DateTime         @updatedAt 
   approvalRemark String?         
+  accessibleBy   String[]         @default([])
 
   // Relations
   initiator User  @relation("CompanyOnboardingInitiator", fields: [initiatorId], references: [id])
@@ -187,6 +189,7 @@ model OrgStructureReq {
   createdAt    DateTime         @default(now()) 
   remarks      String?
   updatedAt   DateTime         @updatedAt 
+  accessibleBy String[]         @default([])
 
   // Relations
   initiator User     @relation("OrgReqInitiator", fields: [initiatorId], references: [id])

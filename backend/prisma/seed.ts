@@ -204,6 +204,7 @@ async function main() {
       approverId: superAdmin.id,
       onboardedType: OnboardedType.new,
       data: { reason: 'Expansion' },
+      accessibleBy: [superAdmin.id],
     },
   });
 

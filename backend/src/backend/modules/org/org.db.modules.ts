@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../lib/prisma';
+import { AccessUtil } from '../../utils/access.util';
 
 export class OrgStructureDbController {
   static async initiateRequest(
@@ -31,6 +32,7 @@ export class OrgStructureDbController {
             parentNode, // { nodeName, nodePath }
           },
           status: 'pending',
+          accessibleBy: await AccessUtil.getGlobalAccessUserIds(),
         },
       });
 
@@ -63,6 +65,14 @@ export class OrgStructureDbController {
         return res
           .status(400)
           .json({ success: false, message: 'Request is already processed' });
+      }
+
+      if (!AccessUtil.isUserPermitted(approverId, request.accessibleBy)) {
+        return res.status(403).json({
+          success: false,
+          message:
+            'Unauthorized: You do not have permission to process this request',
+        });
       }
 
       const reqData = request.data as {
