@@ -1,7 +1,7 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const base_url : string = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const base_url : string = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 /**
  * API CLIENT LOGIC:
  * Configures a global Axios instance for unified backend communication.
@@ -33,13 +33,6 @@ api.interceptors.response.use(
     const message = error.response?.data?.message || 'Something went wrong';
 
     if (error.response?.status === 401) {
-      // Logic: Cleanup stale session data from the browser on auth failure
-      try {
-        localStorage.removeItem('user');
-      } catch {
-        // ignore storage errors
-      }
-
       toast.error(message);
 
       // Logic: Force redirect to login page if we aren't already there

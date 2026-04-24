@@ -5,12 +5,13 @@ import DashboardLayout from '../components/DashboardLayout';
 import toast from 'react-hot-toast';
 import MyCompaniesView from '../components/MyCompaniesView';
 import AllCompaniesView from '../components/AllCompaniesView';
+import UsersListView from '../components/UsersListView';
 import type { Company, GroupCompany } from '../types/company';
 
 const Dashboard = () => {
   // ─── State ──────────────────────────────────────────────────────────────────
   // Logic: activeView determines which subset of data to load and display
-  const [activeView, setActiveView] = useState<'my-companies' | 'all-companies'>('my-companies');
+  const [activeView, setActiveView] = useState<'my-companies' | 'all-companies' | 'users'>('my-companies');
   const [myCompanies, setMyCompanies] = useState<Company[]>([]);
   const [allGroups, setAllGroups] = useState<GroupCompany[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +29,7 @@ const Dashboard = () => {
     setIsLoading(true);
     try {
       // Logic: Request data from the protected user mapping endpoint
-      const response = await api.get('/company/my-companies');
+      const response = await api.post('/company/my-companies');
       setMyCompanies(response.data);
     } catch (error: any) {
       toast.error('Failed to resolve mappings');
@@ -48,7 +49,7 @@ const Dashboard = () => {
     setIsLoading(true);
     try {
       // Logic: Request the organizational cluster data
-      const response = await api.get('/company/groups');
+      const response = await api.post('/company/groups');
       setAllGroups(response.data);
     } catch (error: any) {
       toast.error('Failed to sync directory');
@@ -77,7 +78,8 @@ const Dashboard = () => {
    * Logic: Re-executes the current view's fetch logic to pull live data from DB.
    */
   const handleRefresh = () => {
-    activeView === 'my-companies' ? fetchMyCompanies() : fetchAllGroups();
+    if (activeView === 'my-companies') fetchMyCompanies();
+    else if (activeView === 'all-companies') fetchAllGroups();
   };
 
   return (
@@ -91,13 +93,13 @@ const Dashboard = () => {
               <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em]">Workspace Overview</p>
             </div>
             <h1 className="text-5xl font-black text-slate-900 tracking-tight leading-none mb-3">
-              {activeView === 'my-companies' ? 'My Companies' : 'All Companies'}<br />
+              {activeView === 'my-companies' ? 'My Companies' : activeView === 'all-companies' ? 'All Companies' : 'Team Members'}<br />
             </h1>
 
           </div>
 
           <button
-            onClick={() => activeView === 'my-companies' ? fetchMyCompanies() : fetchAllGroups()}
+            onClick={handleRefresh}
             className="flex items-center gap-3 px-8 py-5 bg-white border border-slate-200 rounded-3xl font-black text-slate-800 hover:bg-slate-50 transition-all hover:shadow-xl hover:shadow-slate-100 active:scale-95"
           >
             <RefreshCcw size={18} className={isLoading ? 'animate-spin text-indigo-600' : ''} />
@@ -116,11 +118,9 @@ const Dashboard = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-10">
-            {activeView === 'my-companies' ? (
-              <MyCompaniesView myCompanies={myCompanies} />
-            ) : (
-              <AllCompaniesView allGroups={allGroups} />
-            )}
+            {activeView === 'my-companies' && <MyCompaniesView myCompanies={myCompanies} />}
+            {activeView === 'all-companies' && <AllCompaniesView allGroups={allGroups} />}
+            {activeView === 'users' && <UsersListView />}
           </div>
         )}
       </div>

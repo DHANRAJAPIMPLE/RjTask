@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   LogOut,
   User,
+  Users,
   ChevronDown,
   Menu,
   X,
@@ -13,7 +14,7 @@ import {
 
 interface LayoutProps {
   children: React.ReactNode;
-  onViewChange: (view: 'my-companies' | 'all-companies') => void;
+  onViewChange: (view: 'my-companies' | 'all-companies' | 'users') => void;
   activeView: string;
 }
 
@@ -73,6 +74,19 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children, onViewChange, active
                   <LayoutDashboard size={22} strokeWidth={2.5} />
                 </div>
                 {isSidebarOpen && <span className="font-bold text-[15px]">All Company</span>}
+              </button>
+
+              <button
+                onClick={() => onViewChange('users')}
+                className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group ${activeView === 'users'
+                    ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100'
+                    : 'text-slate-500 hover:bg-indigo-50 hover:text-indigo-600'
+                  }`}
+              >
+                <div className={`${activeView === 'users' ? 'text-white' : 'text-slate-400 group-hover:text-indigo-600'}`}>
+                  <Users size={22} strokeWidth={2.5} />
+                </div>
+                {isSidebarOpen && <span className="font-bold text-[15px]">Team Members</span>}
               </button>
             </nav>
           </div>

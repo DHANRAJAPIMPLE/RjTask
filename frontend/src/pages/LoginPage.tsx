@@ -11,7 +11,7 @@ const LoginPage = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    system: 0,
+    action: 0,
   });
 
   // ── Async / UI state ───────────────────────────────────────────────────────
@@ -45,8 +45,8 @@ const LoginPage = () => {
     setIsLoading(true);
 
     try {
-      // Logic: Merge 'system' flag into payload. 1 = force login.
-      const payload: any = { ...formData, system: isForce ? 1 : 0 };
+      // Logic: Merge 'action' flag into payload. 1 = force login.
+      const payload: any = { ...formData, action: isForce ? 1 : 0 };
       if (isForce && forceLogToken) {
         payload.force_log_token = forceLogToken; // Logic: Include the required validation token
       }

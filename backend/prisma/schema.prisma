@@ -20,9 +20,13 @@ model user {
   updated_at DateTime @updatedAt
 
   // Relations
-  user_mappings      user_mapping[] @relation("UserMappings")
-  managed_users      user_mapping[] @relation("ReportingManager")
-  user_activities    user_activity[]
+  user_mappings                 user_mapping[]       @relation("UserMappings")
+  managed_users                 user_mapping[]       @relation("ReportingManager")
+  user_activities               user_activity[]
+  initiated_user_onboardings    user_onboarding[]    @relation("UserOnboardingInitiator")
+  approved_user_onboardings     user_onboarding[]    @relation("UserOnboardingApprover")
+  initiated_company_onboardings company_onboarding[] @relation("CompanyOnboardingInitiator")
+  approved_company_onboardings  company_onboarding[] @relation("CompanyOnboardingApprover")
 }
 
 model company {
@@ -32,6 +36,7 @@ model company {
   address            String
   registration_date  DateTime @default(now())
   brand_name         String
+  iecode             String   @unique
   company_code       String   @unique
   create_at          DateTime @default(now())
   updated_at         DateTime @updatedAt
@@ -45,11 +50,13 @@ model group_company {
   id         String   @id @default(uuid())
   name       String
   group_code String   @unique
+  remarks    String? 
   create_at  DateTime @default(now())
   updated_at DateTime @updatedAt
 
   // Relations
   company_mappings company_mapping[]
+ 
 }
 
 enum Status {
@@ -59,12 +66,12 @@ enum Status {
 
 model user_mapping {
   id                String   @id @default(uuid())
-  user_id           String   @db.Uuid
-  company_id        String   @db.Uuid
+  user_id           String
+  company_id        String
   reporting_manager String?   // uuid requried checking  all fk
   status            Status
   designation       String
-  employee_id       String   @db.Uuid
+  employee_id       String
   create_at         DateTime @default(now())
   updated_at        DateTime @updatedAt
 
@@ -76,8 +83,8 @@ model user_mapping {
 
 model company_mapping {
   id           String   @id @default(uuid())
-  company_id   String   @db.Uuid
-  group_id     String   @db.Uuid
+  company_id   String
+  group_id     String
   create_at    DateTime @default(now())
   updated_at   DateTime @updatedAt
 
@@ -88,7 +95,7 @@ model company_mapping {
 
 model user_activity {
   id              String    @id @default(uuid())
-  user_id         String    @db.Uuid
+  user_id         String
   refresh_token   String?
   version         String?
   ip_address      String  
@@ -101,4 +108,51 @@ model user_activity {
 
   // FK Relation
   user          user      @relation(fields: [user_id], references: [id])
+}
+
+enum OnboardingStatus {
+  pending
+  approved
+  rejected
+}
+
+
+model user_onboarding {
+  id           String           @id @default(uuid())
+  initiator_id String
+  approver_id  String?
+  group_code   String?
+  company_code String?
+  data         Json?
+  status       OnboardingStatus @default(pending)
+  approved_at  DateTime?
+  create_at    DateTime         @default(now())
+  updated_at   DateTime         @updatedAt
+  approval_remark String?
+  // Relations
+  initiator user  @relation("UserOnboardingInitiator", fields: [initiator_id], references: [id])
+  approver  user? @relation("UserOnboardingApprover", fields: [approver_id], references: [id])
+}
+
+enum OnboardedType {
+  existing
+  new
+}
+
+model company_onboarding {
+  id             String           @id @default(uuid())
+  initiator_id   String
+  approver_id    String?
+  data           Json?
+  group_code     String?
+  company_code   String           @unique
+  onboarded_type OnboardedType    @default(new)
+  status         OnboardingStatus @default(pending)
+  approved_at    DateTime?
+  create_at      DateTime         @default(now())
+  updated_at     DateTime         @updatedAt
+  approval_remark String?
+  // Relations
+  initiator user  @relation("CompanyOnboardingInitiator", fields: [initiator_id], references: [id])
+  approver  user? @relation("CompanyOnboardingApprover", fields: [approver_id], references: [id])
 }
