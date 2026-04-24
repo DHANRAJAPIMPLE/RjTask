@@ -76,14 +76,14 @@ enum Status {
 
 model UserMapping {
   id                String   @id @default(uuid())
-  userId           String  
-  companyId        String   
-  reportingManager String?  
+  userId            String  
+  companyId         String   
+  reportingManager  String?  
   status            Status
   designation       String
-  employeeId       String   
+  employeeId        String   
   createdAt         DateTime @default(now()) 
-  updatedAt        DateTime @updatedAt 
+  updatedAt         DateTime @updatedAt 
 
   // FK Relations
   user              User     @relation("UserMappings", fields: [userId], references: [id])
