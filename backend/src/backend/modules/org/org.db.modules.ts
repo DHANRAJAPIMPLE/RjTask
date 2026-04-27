@@ -114,6 +114,14 @@ export class OrgStructureDbController {
         orderBy: { nodePath: 'asc' },
       });
 
+      // Fetch pending requests for this company
+      const pendingRequests = await prisma.orgStructureReq.findMany({
+        where: {
+          companyId: company.id,
+          status: 'pending',
+        },
+      });
+
       // Map to remove internal IDs and match user's desired format
       const safeNodes = nodes.map((node) => ({
         nodeName: node.nodeName,
@@ -124,7 +132,10 @@ export class OrgStructureDbController {
       res.status(200).json({
         message: 'Organization structure fetched successfully!',
         code: 200,
-        data: safeNodes,
+        data: {
+          nodes: safeNodes,
+          pending: pendingRequests,
+        },
       });
     } catch (error) {
       next(error);

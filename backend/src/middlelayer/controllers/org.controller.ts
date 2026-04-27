@@ -219,7 +219,15 @@ export class OrgController {
         );
       }
 
-      res.status(status).json(data);
+      // Format response with normal and pending arrays
+      res.status(200).json({
+        message: 'Organization structure fetched successfully!',
+        code: 200,
+        data: {
+          normal: data.data.nodes,
+          pending: data.data.pending,
+        },
+      });
     } catch (error) {
       next(error);
     }
