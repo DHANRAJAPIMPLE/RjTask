@@ -219,13 +219,23 @@ export class OrgController {
         );
       }
 
-      // Format response with normal and pending arrays
+      // Format response with active and pending arrays
+      const formattedPending = data.data.pending.map((req: any) => {
+        const reqData = req.data || {};
+        return {
+          id: req.id,
+          newNodeName: reqData.newNodeName,
+          nodeType: reqData.nodeType,
+          parentNode: reqData.parentNode,
+        };
+      });
+
       res.status(200).json({
         message: 'Organization structure fetched successfully!',
         code: 200,
         data: {
           active: data.data.nodes,
-          pending: data.data.pending,
+          pending: formattedPending,
         },
       });
     } catch (error) {
