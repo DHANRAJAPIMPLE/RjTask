@@ -4,194 +4,132 @@ import { HashUtil } from '../../../shared/utils/hash.util';
 import { AccessUtil } from '../../utils/access.util';
 
 export class OnboardingDbController {
-  private static normalizeCodeNamePart(value: string): string {
-    const normalized = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    return normalized.slice(0, 8).padEnd(8, 'X');
+  // --- Internal Atomic Operations ---
+
+  static async checkCompanyCode(req: Request, res: Response) {
+    const { code } = req.body;
+    const existingInMaster = await prisma.company.findUnique({
+      where: { companyCode: code },
+    });
+    const existingInOnboarding = await prisma.companyOnboarding.findUnique({
+      where: { companyCode: code },
+    });
+    res.json({ exists: !!existingInMaster || !!existingInOnboarding });
   }
 
-  private static formatCodeDatePart(date: Date): string {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = String(date.getFullYear());
-    return `${day}${month}${year}`;
+  static async checkGroupCode(req: Request, res: Response) {
+    const { code } = req.body;
+    const existing = await prisma.groupCompany.findUnique({
+      where: { groupCode: code },
+    });
+    res.json({ exists: !!existing });
   }
 
-  private static async generateUniqueCompanyCode(
-    companyName: string,
-  ): Promise<string> {
-    const namePart = this.normalizeCodeNamePart(companyName);
-    const datePart = this.formatCodeDatePart(new Date());
-    const baseCode = `${namePart}${datePart}`;
-    let code = baseCode;
-    let counter = 1;
-    let isUnique = false;
-
-    while (!isUnique) {
-      const existing = await prisma.company.findUnique({
-        where: { companyCode: code },
-      });
-      const existingOnboarding = await prisma.companyOnboarding.findUnique({
-        where: { companyCode: code },
-      });
-      if (!existing && !existingOnboarding) {
-        isUnique = true;
-      } else {
-        code = `${baseCode}${counter}`;
-        counter++;
-      }
-    }
-    return code;
-  }
-
-  private static async generateUniqueGroupCode(
-    groupName: string,
-  ): Promise<string> {
-    const namePart = this.normalizeCodeNamePart(groupName);
-    const datePart = this.formatCodeDatePart(new Date());
-    const baseCode = `${namePart}${datePart}`;
-    let code = baseCode;
-    let counter = 1;
-    let isUnique = false;
-
-    while (!isUnique) {
-      const existing = await prisma.groupCompany.findUnique({
-        where: { groupCode: code },
-      });
-      if (!existing) {
-        isUnique = true;
-      } else {
-        code = `${baseCode}${counter}`;
-        counter++;
-      }
-    }
-    return code;
-  }
-
-  static async initiate(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { group, company, signatories, initiatorId } = req.body;
-
-      // 1. Handle Group Code
-      let finalGroupCode = group.groupCode;
-      if (!finalGroupCode && group.name) {
-        finalGroupCode = await OnboardingDbController.generateUniqueGroupCode(
-          group.name,
-        );
-      }
-
-      // 2. Handle Company Code
-      let finalCompanyCode = company.companyCode;
-      // Check if provided code already exists in master or pending onboarding
-      if (finalCompanyCode) {
-        const existingInMaster = await prisma.company.findUnique({
-          where: { companyCode: finalCompanyCode },
-        });
-        const existingInOnboarding = await prisma.companyOnboarding.findUnique({
-          where: { companyCode: finalCompanyCode },
-        });
-
-        if (existingInMaster || existingInOnboarding) {
-          // If it exists, generate a new unique one to avoid conflicts
-          finalCompanyCode =
-            await OnboardingDbController.generateUniqueCompanyCode(
-              company.name,
-            );
-        }
-      } else {
-        // No code provided, generate one
-        finalCompanyCode =
-          await OnboardingDbController.generateUniqueCompanyCode(company.name);
-      }
-
-      await prisma.companyOnboarding.create({
-        data: {
-          initiatorId,
-          companyCode: finalCompanyCode,
-          groupCode: finalGroupCode,
-          data: {
-            group,
-            company,
-            signatories,
+  static async getManagerInfo(req: Request, res: Response) {
+    const { email } = req.body;
+    const manager = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        userMappings: {
+          include: {
+            company: {
+              include: {
+                companyMappings: {
+                  include: { group: true },
+                },
+              },
+            },
           },
-          status: 'pending',
-          accessibleBy: await AccessUtil.getGlobalAccessUserIds(),
         },
-      });
-
-      res.status(201).json({
-        message: 'Onboarding initiated successfully',
-        companyCode: finalCompanyCode,
-        groupCode: finalGroupCode,
-      });
-    } catch (error) {
-      next(error);
-    }
+      },
+    });
+    res.json(manager);
   }
 
-  static async action(req: Request, res: Response, next: NextFunction) {
+  static async getUserByEmail(req: Request, res: Response) {
+    const { email } = req.body;
+    const user = await prisma.user.findUnique({ where: { email } });
+    res.json(user);
+  }
+
+  static async getGlobalAccessUserIds(req: Request, res: Response) {
+    const userIds = await AccessUtil.getGlobalAccessUserIds();
+    res.json(userIds);
+  }
+
+  // --- Create Operations ---
+
+  static async createCompanyOnboarding(req: Request, res: Response) {
+    const onboarding = await prisma.companyOnboarding.create({
+      data: req.body,
+    });
+    res.status(201).json(onboarding);
+  }
+
+  static async createUserOnboarding(req: Request, res: Response) {
+    const onboarding = await prisma.userOnboarding.create({
+      data: req.body,
+    });
+    res.status(201).json(onboarding);
+  }
+
+  // --- Get Operations ---
+
+  static async getCompanyOnboardingById(req: Request, res: Response) {
+    const { id } = req.body;
+    const onboarding = await prisma.companyOnboarding.findUnique({
+      where: { id },
+    });
+    res.json(onboarding);
+  }
+
+  static async getUserOnboardingById(req: Request, res: Response) {
+    const { id } = req.body;
+    const onboarding = await prisma.userOnboarding.findUnique({
+      where: { id },
+    });
+    res.json(onboarding);
+  }
+
+  // --- Status Update Operations ---
+
+  static async updateCompanyOnboardingStatus(req: Request, res: Response) {
+    const { id, data } = req.body;
+    const updated = await prisma.companyOnboarding.update({
+      where: { id },
+      data,
+    });
+    res.json(updated);
+  }
+
+  static async updateUserOnboardingStatus(req: Request, res: Response) {
+    const { id, data } = req.body;
+    const updated = await prisma.userOnboarding.update({
+      where: { id },
+      data,
+    });
+    res.json(updated);
+  }
+
+  // --- Transactional Commit Operations (Keep as atomic transactions) ---
+
+  static async approveCompanyOnboarding(req: Request, res: Response, next: NextFunction) {
     try {
-      const { id, action, remark, approverId } = req.body;
+      const { id, approverId, remark } = req.body;
 
       const onboarding = await prisma.companyOnboarding.findUnique({
         where: { id },
       });
 
-      if (!onboarding) {
-        return res.status(404).json({ error: 'Onboarding request not found' });
-      }
+      if (!onboarding) throw new Error('Onboarding request not found');
 
-      if (onboarding.status !== 'pending') {
-        return res
-          .status(400)
-          .json({ error: 'Onboarding request already processed' });
-      }
-
-      if (!AccessUtil.isUserPermitted(approverId, onboarding.accessibleBy)) {
-        return res.status(403).json({
-          error: 'Unauthorized: You do not have permission to process this request',
-        });
-      }
-
-      if (action === 'reject') {
-        await prisma.companyOnboarding.update({
-          where: { id },
-          data: {
-            status: 'rejected',
-            approverId,
-            approvedAt: new Date(),
-            approvalRemark: remark,
-          },
-        });
-        return res.status(200).json({ message: 'Onboarding request rejected' });
-      }
-
-      // APPROVE LOGIC
-      const data = onboarding.data as {
-        group: { name: string; remarks?: string };
-        company: {
-          name: string;
-          gst: string;
-          address: string;
-          brand: string;
-          ieCode: string;
-          registeredAt?: string | Date;
-        };
-        signatories: {
-          email: string;
-          name: string;
-          phone: string;
-          designation: string;
-          employeeId?: string;
-        }[];
-      };
+      const data = onboarding.data as any;
       const { group, company, signatories } = data;
       const groupCode = onboarding.groupCode;
 
-      // Use transaction to ensure atomicity
       await prisma.$transaction(async (tx) => {
         let groupId = '';
 
-        // 1. Handle Group
         if (groupCode) {
           let groupObj = await tx.groupCompany.findUnique({
             where: { groupCode },
@@ -208,7 +146,6 @@ export class OnboardingDbController {
           if (groupObj) groupId = groupObj.id;
         }
 
-        // 2. Create Company
         const newCompany = await tx.company.create({
           data: {
             legalName: company.name,
@@ -223,7 +160,6 @@ export class OnboardingDbController {
           },
         });
 
-        // 3. Map Company to Group (if group exists)
         if (groupId) {
           await tx.companyMapping.create({
             data: {
@@ -233,7 +169,6 @@ export class OnboardingDbController {
           });
         }
 
-        // 4. Create Root Org Structure Node
         const nodePath = (onboarding.companyCode as string)
           .replace(/[^a-zA-Z0-9]/g, '')
           .toUpperCase();
@@ -247,12 +182,10 @@ export class OnboardingDbController {
           },
         });
 
-        // 5. Create Signatories (Users), Mappings, and Access
         for (const sig of signatories) {
           let user = await tx.user.findUnique({ where: { email: sig.email } });
 
           if (!user) {
-            // Create a default password for new users (they should reset it)
             const defaultPassword = await HashUtil.hash('Welcome@123');
             user = await tx.user.create({
               data: {
@@ -264,7 +197,6 @@ export class OnboardingDbController {
             });
           }
 
-          // Create User Mapping
           await tx.userMapping.create({
             data: {
               userId: user.id,
@@ -275,11 +207,10 @@ export class OnboardingDbController {
             },
           });
 
-          // Create User Access (Permissions) - Set as Global for Company Signatories
           await tx.userAccess.create({
             data: {
               userId: user.id,
-              roleCode: null, // Default role for initial company users
+              roleCode: null,
               nodeId: rootNode.id,
               accessType: null,
               companyId: newCompany.id,
@@ -288,7 +219,6 @@ export class OnboardingDbController {
           });
         }
 
-        // 6. Update Onboarding Status
         await tx.companyOnboarding.update({
           where: { id },
           data: {
@@ -300,171 +230,28 @@ export class OnboardingDbController {
         });
       });
 
-      res
-        .status(200)
-        .json({ message: 'Onboarding request approved and data populated' });
+      res.status(200).json({ message: 'Onboarding approved' });
     } catch (error) {
       next(error);
     }
   }
 
-  static async initiateUser(req: Request, res: Response, next: NextFunction) {
+  static async approveUserOnboarding(req: Request, res: Response, next: NextFunction) {
     try {
-      const { basicDetails, permissions, initiatorId } = req.body;
-      const { email, reportingManager } = basicDetails;
-
-      // 1. Validate reporting manager exists and get their company info
-      const manager = await prisma.user.findUnique({
-        where: { email: reportingManager },
-        include: {
-          userMappings: {
-            include: {
-              company: {
-                include: {
-                  companyMappings: {
-                    include: { group: true },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
-
-      if (!manager) {
-        return res
-          .status(400)
-          .json({ error: 'Reporting manager email not found' });
-      }
-
-      // 2. Check if user already exists in master table
-      const existingUser = await prisma.user.findUnique({ where: { email } });
-      if (existingUser) {
-        return res
-          .status(400)
-          .json({ error: 'User already exists in master table' });
-      }
-
-      // 3. Determine Company and Group Code
-      let companyCode: string | undefined;
-      let groupCode: string | undefined;
-
-      // Priority 1: Use manager's company/group
-      const managerMapping = manager.userMappings[0];
-      if (managerMapping && managerMapping.company) {
-        companyCode = managerMapping.company.companyCode;
-        // Check if company has mappings to get group code
-        const compMapping = managerMapping.company.companyMappings?.[0];
-        if (compMapping && compMapping.group) {
-          groupCode = compMapping.group.groupCode;
-        }
-      }
-
-      // Priority 2: If manager mapping not found, use initiator's company/group
-      if (!companyCode) {
-        const initiatorMapping = await prisma.userMapping.findFirst({
-          where: { userId: initiatorId },
-          include: {
-            company: {
-              include: {
-                companyMappings: {
-                  include: { group: true },
-                },
-              },
-            },
-          },
-        });
-
-        if (initiatorMapping && initiatorMapping.company) {
-          companyCode = initiatorMapping.company.companyCode;
-          const compMapping = initiatorMapping.company.companyMappings?.[0];
-          if (compMapping && compMapping.group) {
-            groupCode = compMapping.group.groupCode;
-          }
-        }
-      }
-
-      await prisma.userOnboarding.create({
-        data: {
-          initiatorId,
-          companyCode: companyCode,
-          groupCode: groupCode,
-          data: {
-            basicDetails,
-            permissions,
-          },
-          status: 'pending',
-          accessibleBy: await AccessUtil.getGlobalAccessUserIds(),
-        },
-      });
-
-      res.status(201).json({
-        message: 'User onboarding initiated successfully',
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  static async actionUser(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { id, action, remark, approverId } = req.body;
+      const { id, approverId, remark } = req.body;
 
       const onboarding = await prisma.userOnboarding.findUnique({
         where: { id },
       });
 
-      if (!onboarding) {
-        return res
-          .status(404)
-          .json({ error: 'User onboarding request not found' });
-      }
+      if (!onboarding) throw new Error('User onboarding request not found');
 
-      if (onboarding.status !== 'pending') {
-        return res.status(400).json({ error: 'Request already processed' });
-      }
-
-      if (!AccessUtil.isUserPermitted(approverId, onboarding.accessibleBy)) {
-        return res.status(403).json({
-          error: 'Unauthorized: You do not have permission to process this request',
-        });
-      }
-
-      if (action === 'reject') {
-        await prisma.userOnboarding.update({
-          where: { id },
-          data: {
-            status: 'rejected',
-            approverId,
-            approvedAt: new Date(),
-            approvalRemark: remark,
-          },
-        });
-        return res.status(200).json({ message: 'User onboarding rejected' });
-      }
-
-      // APPROVE LOGIC
-      const data = onboarding.data as {
-        basicDetails: {
-          name: string;
-          email: string;
-          phone: string;
-          reportingManager: string;
-          designation: string;
-          employeeId: string;
-        };
-        permissions: {
-          accessType: string;
-          roleName: string;
-          nodePath: string;
-        }[];
-      };
+      const data = onboarding.data as any;
       const { basicDetails, permissions } = data;
       const { name, email, phone, reportingManager, designation, employeeId } =
         basicDetails;
 
       await prisma.$transaction(async (tx) => {
-        // 1. Get Manager ID
         const manager = await tx.user.findUnique({
           where: { email: reportingManager },
           include: {
@@ -475,7 +262,6 @@ export class OnboardingDbController {
         });
         if (!manager) throw new Error('Manager not found');
 
-        // 2. Get Company ID from code or manager's mapping
         let company;
         if (onboarding.companyCode) {
           company = await tx.company.findUnique({
@@ -483,14 +269,12 @@ export class OnboardingDbController {
           });
         }
 
-        // Fallback: If companyCode was null in onboarding record, get it from manager
         if (!company && manager.userMappings[0]) {
           company = manager.userMappings[0].company;
         }
 
         if (!company) throw new Error('Company not found');
 
-        // 3. Create/Update User
         let user = await tx.user.findUnique({ where: { email } });
         if (!user) {
           const defaultPassword = await HashUtil.hash('Welcome@123');
@@ -504,7 +288,6 @@ export class OnboardingDbController {
           });
         }
 
-        // 4. Create User Mapping
         await tx.userMapping.create({
           data: {
             userId: user.id,
@@ -516,20 +299,11 @@ export class OnboardingDbController {
           },
         });
 
-        // 5. Create User Access (Permissions)
         if (Array.isArray(permissions)) {
           for (const perm of permissions) {
             const { accessType, roleName, nodePath } = perm;
-
-            // Find role by name
-            const role = await tx.roles.findUnique({
-              where: { roleName: roleName },
-            });
-
-            // Find node by path
-            const node = await tx.orgStructure.findUnique({
-              where: { nodePath: nodePath },
-            });
+            const role = await tx.roles.findUnique({ where: { roleName } });
+            const node = await tx.orgStructure.findUnique({ where: { nodePath } });
 
             if (role && node) {
               await tx.userAccess.create({
@@ -537,20 +311,15 @@ export class OnboardingDbController {
                   userId: user.id,
                   roleCode: role.roleCode,
                   nodeId: node.id,
-                  accessType: accessType,
+                  accessType,
                   companyId: company.id,
                   isGlobalAccess: false,
                 },
               });
-            } else {
-              console.warn(
-                `Could not create access for role ${roleName} or node ${nodePath}: Role found: ${!!role}, Node found: ${!!node}`,
-              );
             }
           }
         }
 
-        // 6. Update Onboarding
         await tx.userOnboarding.update({
           where: { id },
           data: {
@@ -562,7 +331,7 @@ export class OnboardingDbController {
         });
       });
 
-      res.status(200).json({ message: 'User approved and onboarded' });
+      res.status(200).json({ message: 'User onboarded' });
     } catch (error) {
       next(error);
     }

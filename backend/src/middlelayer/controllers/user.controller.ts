@@ -9,10 +9,19 @@ import {
 } from '../validations/onboarding.validator';
 
 export class UserController {
+  private static formatDate(date: Date | null) {
+    if (!date) return 'N/A';
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+
   static async fetchAllUsers(req: Request, res: Response, next: NextFunction) {
     try {
-      // Logic: Forward request to Backend DB Service
-      const { data, ok, status } = await internalPost(
+      // 1. Fetch raw data from Backend (5001)
+      const { data, ok, status } = await internalPost<any>(
         `${config.backendUrl}/internal/user/fetch-all`,
       );
 
@@ -20,7 +29,149 @@ export class UserController {
         throw new AppError(data.error || 'Failed to fetch users', status);
       }
 
-      res.status(200).json(data);
+      const { users, pendingOnboardings } = data;
+
+      // 2. Apply formatting and business logic in Middle Layer
+      const result = {
+        activeUsers: [] as any[],
+        pendingUsers: [] as any[],
+        inactiveUsers: [] as any[],
+      };
+
+      users.forEach((u: any) => {
+        // If user has no mapping, treat as inactive
+        if (u.userMappings.length === 0) {
+          const primaryRoles = u.userAccesses
+            .filter((a: any) => a.accessType === 'PRIMARY')
+            .map((a: any) => ({
+              roleCategory: a.role?.category || 'N/A',
+              roleSubCategory: a.role?.subCategory || 'N/A',
+              roleName: a.role?.roleName || 'N/A',
+              nodeName: a.orgStructure?.nodeName || 'N/A',
+              nodePath: a.orgStructure?.nodePath || 'N/A',
+              accessType: 'PRIMARY',
+            }));
+
+          const secondaryRoles = u.userAccesses
+            .filter((a: any) => a.accessType === 'SECONDARY')
+            .map((a: any) => ({
+              roleCategory: a.role?.category || 'N/A',
+              roleSubCategory: a.role?.subCategory || 'N/A',
+              roleName: a.role?.roleName || 'N/A',
+              nodeName: a.orgStructure?.nodeName || 'N/A',
+              nodePath: a.orgStructure?.nodePath || 'N/A',
+              accessType: 'SECONDARY',
+            }));
+
+          result.inactiveUsers.push({
+            basicDetails: {
+              name: u.name,
+              email: u.email,
+              phone: u.phone,
+              companyOnboardingDate: UserController.formatDate(u.createdAt),
+              designation: 'N/A',
+              reportingManager: 'N/A',
+            },
+            primary: primaryRoles,
+            secondary: secondaryRoles,
+          });
+        } else {
+          u.userMappings.forEach((m: any) => {
+            const companyAccesses = u.userAccesses.filter(
+              (a: any) => a.companyId === m.companyId,
+            );
+
+            const primaryRoles = companyAccesses
+              .filter((a: any) => a.accessType === 'PRIMARY')
+              .map((a: any) => ({
+                roleCategory: a.role?.category || 'N/A',
+                roleSubCategory: a.role?.subCategory || 'N/A',
+                roleName: a.role?.roleName || 'N/A',
+                nodeName: a.orgStructure?.nodeName || 'N/A',
+                nodePath: a.orgStructure?.nodePath || 'N/A',
+                accessType: 'PRIMARY',
+              }));
+
+            const secondaryRoles = companyAccesses
+              .filter((a: any) => a.accessType === 'SECONDARY')
+              .map((a: any) => ({
+                roleCategory: a.role?.category || 'N/A',
+                roleSubCategory: a.role?.subCategory || 'N/A',
+                roleName: a.role?.roleName || 'N/A',
+                nodeName: a.orgStructure?.nodeName || 'N/A',
+                nodePath: a.orgStructure?.nodePath || 'N/A',
+                accessType: 'SECONDARY',
+              }));
+
+            const userData = {
+              basicDetails: {
+                name: u.name,
+                email: u.email,
+                phone: u.phone,
+                companyOnboardingDate: UserController.formatDate(m.createdAt),
+                designation: m.designation,
+                reportingManager: m.manager?.email || 'N/A',
+              },
+              primary: primaryRoles,
+              secondary: secondaryRoles,
+            };
+
+            if (m.status === 'active') {
+              result.activeUsers.push(userData);
+            } else {
+              result.inactiveUsers.push(userData);
+            }
+          });
+        }
+      });
+
+      pendingOnboardings.forEach((onb: any) => {
+        const onbData = onb.data as any;
+        const basic = onbData?.basicDetails || {};
+        const permissions = onbData?.permissions || [];
+
+        const primary = permissions
+          .filter((p: any) => p.accessType === 'PRIMARY')
+          .map((p: any) => ({
+            roleCategory: p.roleCategory || 'N/A',
+            roleSubCategory: p.roleSubCategory || 'N/A',
+            roleName: p.roleName || 'N/A',
+            nodeName: p.nodeName || 'N/A',
+            nodePath: p.nodePath || 'N/A',
+            accessType: 'PRIMARY',
+          }));
+
+        const secondary = permissions
+          .filter((p: any) => p.accessType === 'SECONDARY')
+          .map((p: any) => ({
+            roleCategory: p.roleCategory || 'N/A',
+            roleSubCategory: p.roleSubCategory || 'N/A',
+            roleName: p.roleName || 'N/A',
+            nodeName: p.nodeName || 'N/A',
+            nodePath: p.nodePath || 'N/A',
+            accessType: 'SECONDARY',
+          }));
+
+        result.pendingUsers.push({
+          id: onb.id,
+          basicDetails: {
+            name: basic.name || 'N/A',
+            email: basic.email || 'N/A',
+            phone: basic.phone || 'N/A',
+            companyOnboardingDate: UserController.formatDate(onb.createdAt),
+            designation: basic.designation || 'N/A',
+            reportingManager: basic.reportingManager || 'N/A',
+          },
+          primary,
+          secondary,
+        });
+      });
+
+      res.status(200).json({
+        message: 'Users fetched successfully!',
+        code: 200,
+        data: result,
+      });
     } catch (error) {
       next(error);
     }
@@ -34,34 +185,78 @@ export class UserController {
     try {
       const validatedData = userOnboardingSchema.parse(req.body);
       const initiatorId = req.user?.id;
+      const { basicDetails, permissions } = validatedData;
+      const { email, reportingManager } = basicDetails;
 
       if (!initiatorId) {
         throw new AppError('Unauthorized', 401);
       }
 
-      // Forward to Backend (5001)
-      const { data, ok, status } = await internalPost(
-        `${config.backendUrl}/internal/onboarding/user/initiate`,
+      // 1. Logic: Validate reporting manager exists and get their company info
+      const { data: manager, ok: managerOk } = await internalPost<any>(
+        `${config.backendUrl}/internal/onboarding/user/check-manager`,
+        { email: reportingManager }
+      );
+
+      if (!managerOk || !manager) {
+        throw new AppError('Reporting manager email not found', 400);
+      }
+
+      // 2. Logic: Check if user already exists
+      const { data: existingUser } = await internalPost<any>(
+        `${config.backendUrl}/internal/onboarding/user/check-exists`,
+        { email }
+      );
+      if (existingUser) {
+        throw new AppError('User already exists in master table', 400);
+      }
+
+      // 3. Logic: Determine Company and Group Code
+      let companyCode: string | undefined;
+      let groupCode: string | undefined;
+
+      // Priority 1: Use manager's company/group
+      const managerMapping = manager.userMappings?.[0];
+      if (managerMapping && managerMapping.company) {
+        companyCode = managerMapping.company.companyCode;
+        const compMapping = managerMapping.company.companyMappings?.[0];
+        if (compMapping && compMapping.group) {
+          groupCode = compMapping.group.groupCode;
+        }
+      }
+
+      // Priority 2: Use initiator's company/group (if manager mapping not enough)
+      if (!companyCode) {
+        // Here we could fetch initiator mapping if needed, but let's stick to manager for now as per original logic
+      }
+
+      // Logic: Get global access user IDs
+      const { data: globalAccessIds } = await internalPost<string[]>(`${config.backendUrl}/internal/onboarding/global-access-ids`, {});
+
+      // Call Backend to create the record
+      const { data: createRes, ok: createOk, status: createStatus } = await internalPost(
+        `${config.backendUrl}/internal/onboarding/user/create`,
         {
-          ...validatedData,
           initiatorId,
+          companyCode,
+          groupCode,
+          data: {
+            basicDetails,
+            permissions,
+          },
+          status: 'pending',
+          accessibleBy: globalAccessIds || [],
         },
       );
 
-      if (!ok) {
-        throw new AppError(
-          data.error || 'Failed to initiate user onboarding',
-          status,
-        );
+      if (!createOk) {
+        throw new AppError(createRes.error || 'Failed to initiate user onboarding', createStatus);
       }
 
-      res.status(201).json(data);
+      res.status(201).json({ message: 'User onboarding initiated successfully' });
     } catch (error) {
       if (error instanceof ZodError) {
-        return res.status(400).json({
-          error: 'Validation failed',
-          details: error.errors,
-        });
+        return res.status(400).json({ error: 'Validation failed', details: error.errors });
       }
       next(error);
     }
@@ -75,34 +270,60 @@ export class UserController {
     try {
       const validatedData = userActionSchema.parse(req.body);
       const approverId = req.user?.id;
+      const { id, action, remark } = validatedData;
 
       if (!approverId) {
         throw new AppError('Unauthorized', 401);
       }
 
-      // Forward to Backend (5001)
-      const { data, ok, status } = await internalPost(
-        `${config.backendUrl}/internal/onboarding/user/action`,
-        {
-          ...validatedData,
-          approverId,
-        },
+      // 1. Fetch onboarding record
+      const { data: onboarding, ok: fetchOk } = await internalPost<any>(
+        `${config.backendUrl}/internal/onboarding/user/get`,
+        { id }
       );
 
-      if (!ok) {
-        throw new AppError(
-          data.error || 'Failed to process user onboarding action',
-          status,
-        );
+      if (!fetchOk || !onboarding) {
+        throw new AppError('User onboarding request not found', 404);
       }
 
-      res.status(200).json(data);
+      // 2. Logic: Validate status
+      if (onboarding.status !== 'pending') {
+        throw new AppError('Request already processed', 400);
+      }
+
+      // 3. Logic: Verify permissions
+      if (!onboarding.accessibleBy.includes(approverId)) {
+        throw new AppError('Unauthorized: You do not have permission to process this request', 403);
+      }
+
+      // 4. Handle rejection
+      if (action === 'reject') {
+        await internalPost(`${config.backendUrl}/internal/onboarding/user/update-status`, {
+          id,
+          data: {
+            status: 'rejected',
+            approverId,
+            approvedAt: new Date(),
+            approvalRemark: remark,
+          },
+        });
+        return res.status(200).json({ message: 'User onboarding rejected' });
+      }
+
+      // 5. Handle approval (Commit to Backend Transaction)
+      const { data: commitRes, ok: commitOk, status: commitStatus } = await internalPost(
+        `${config.backendUrl}/internal/onboarding/user/approve-commit`,
+        { id, approverId, remark }
+      );
+
+      if (!commitOk) {
+        throw new AppError(commitRes.error || 'Failed to process user onboarding approval', commitStatus);
+      }
+
+      res.status(200).json({ message: 'User approved and onboarded' });
     } catch (error) {
       if (error instanceof ZodError) {
-        return res.status(400).json({
-          error: 'Validation failed',
-          details: error.errors,
-        });
+        return res.status(400).json({ error: 'Validation failed', details: error.errors });
       }
       next(error);
     }

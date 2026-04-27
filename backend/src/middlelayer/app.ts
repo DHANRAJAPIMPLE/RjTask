@@ -5,7 +5,7 @@ import authRoutes from './routes/auth.routes';
 import companyRoutes from './routes/company.routes';
 import adminRoutes from './routes/admin.routes';
 import { createErrorMiddleware } from '../shared/middlewares/error.middleware';
-const allowedOrigins = ['http://localhost:5173', 'http://192.168.1.7:8080'];
+const allowedOrigins = ['http://localhost:8080', 'http://192.168.1.7:8080'];
 const app = express();
 
 app.use(
@@ -29,6 +29,10 @@ app.use(cookieParser());
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/company-settings', companyRoutes);
 app.use('/api/v1/admin', adminRoutes);
+
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'OK' });
+});
 
 // Error handling middleware (should be last)
 

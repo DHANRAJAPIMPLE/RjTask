@@ -35,11 +35,11 @@ export const companyOnboardingSchema = z.object({
       .trim()
       .min(2, 'Group name must be at least 2 characters')
       .max(100, 'Group name too long'),
-    groupCode: groupCodeSchema,
+    groupCode: groupCodeSchema.optional(),
     remarks: z.string().trim().max(500, 'Remarks too long').nullable().optional(),
   }),
   company: z.object({
-    companyCode: companyCodeSchema,
+    companyCode: companyCodeSchema.optional(),
     name: z
       .string()
       .trim()
