@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { CompanyController } from '../controllers/company.controller';
+import { AdminController } from '../controllers/admin.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
 
 
@@ -11,7 +11,7 @@ const router = Router();
 router.use(authMiddleware);
 
 // -------------company routes------------------------------
-router.post('/groups', CompanyController.getGroupCompanies);
+router.post('/groups', AdminController.getGroupCompanies);
 // ----------------------------------------------------------
 
 

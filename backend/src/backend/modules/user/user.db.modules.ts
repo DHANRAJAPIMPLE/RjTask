@@ -74,7 +74,6 @@ export class UserDbController {
             }));
 
           result.inactiveUsers.push({
-            uuid: u.id,
             basicDetails: {
               name: u.name,
               email: u.email,
@@ -116,7 +115,6 @@ export class UserDbController {
               }));
 
             const userData = {
-              uuid: u.id,
               basicDetails: {
                 name: u.name,
                 email: u.email,

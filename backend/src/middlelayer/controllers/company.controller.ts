@@ -36,26 +36,7 @@ export class CompanyController {
     }
   }
 
-  static async getGroupCompanies(
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction,
-  ) {
-    try {
-      // Forward to Backend (5001)
-      const { data, ok, status } = await internalPost(
-        `${config.backendCompanyUrl}/groups`,
-      );
 
-      if (!ok) {
-        throw new AppError(data.error || 'Failed to fetch groups', status);
-      }
-
-      res.status(200).json(data);
-    } catch (error) {
-      next(error);
-    }
-  }
 
   static async initiateCompanyOnboarding(
     req: Request & { user?: { id: string } },
