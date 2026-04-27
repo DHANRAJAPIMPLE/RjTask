@@ -2,13 +2,6 @@ import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../lib/prisma';
 
 export class CompanyDbController {
-  // private static formatDate(date: Date | string): string {
-  //   const d = new Date(date);
-  //   const day = String(d.getDate()).padStart(2, '0');
-  //   const month = String(d.getMonth() + 1).padStart(2, '0');
-  //   const year = d.getFullYear();
-  //   return `${day}-${month}-${year}`;
-  // }
 
   static async getMyCompanies(req: Request, res: Response, next: NextFunction) {
     try {

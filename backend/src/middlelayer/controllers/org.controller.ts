@@ -224,7 +224,7 @@ export class OrgController {
         message: 'Organization structure fetched successfully!',
         code: 200,
         data: {
-          normal: data.data.nodes,
+          active: data.data.nodes,
           pending: data.data.pending,
         },
       });
