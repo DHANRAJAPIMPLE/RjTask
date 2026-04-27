@@ -17,17 +17,25 @@ export class RoleController {
         throw new AppError('Unauthorized', 401);
       }
 
-      // Forward to Backend (5001)
-      const { data, ok, status } = await internalPost(
-        `${config.backendUrl}/internal/roles/create`,
-        rolesData,
-      );
-
-      if (!ok) {
-        throw new AppError(data.message || 'Failed to create roles', status);
+      if (!Array.isArray(rolesData)) {
+        throw new AppError('Invalid data format. Expected an array of roles.', 400);
       }
 
-      res.status(200).json(data);
+      const results = [];
+      for (const role of rolesData) {
+        const { data, ok } = await internalPost(
+          `${config.backendUrl}/internal/roles/upsert-role`,
+          role
+        );
+        if (ok) {
+          results.push(data);
+        }
+      }
+
+      res.status(200).json({
+        success: true,
+        data: results,
+      });
     } catch (error) {
       next(error);
     }
@@ -45,8 +53,8 @@ export class RoleController {
         throw new AppError('Unauthorized', 401);
       }
 
-      // Forward to Backend (5001)
-      const { data, ok, status } = await internalPost(
+      // 1. Fetch raw data from Backend
+      const { data, ok, status } = await internalPost<any[]>(
         `${config.backendUrl}/internal/roles/fetch-all`,
       );
 
@@ -54,7 +62,18 @@ export class RoleController {
         throw new AppError(data.message || 'Failed to fetch roles', status);
       }
 
-      res.status(200).json(data);
+      // 2. Logic: Apply formatting
+      const formattedRoles = data.map((role) => ({
+        roleName: role.roleName,
+        category: role.category,
+        subCategory: role.subCategory,
+        permissionLevel: role.permissionLevel,
+      }));
+
+      res.status(200).json({
+        success: true,
+        data: formattedRoles,
+      });
     } catch (error) {
       next(error);
     }

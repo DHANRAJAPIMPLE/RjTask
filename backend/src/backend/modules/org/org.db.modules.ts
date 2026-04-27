@@ -3,126 +3,44 @@ import { prisma } from '../../lib/prisma';
 import { AccessUtil } from '../../utils/access.util';
 
 export class OrgStructureDbController {
-  static async initiateRequest(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ) {
-    try {
-      const { companyCode, newNodeName, nodeType, parentNode, initiatorId } =
-        req.body;
+  // --- Internal Atomic Operations ---
 
-      const company = await prisma.company.findUnique({
-        where: { companyCode: companyCode },
-      });
-
-      if (!company) {
-        return res
-          .status(404)
-          .json({ success: false, message: 'Company not found' });
-      }
-
-      const request = await prisma.orgStructureReq.create({
-        data: {
-          initiatorId,
-          companyId: company.id,
-          data: {
-            newNodeName,
-            nodeType,
-            parentNode, // { nodeName, nodePath }
-          },
-          status: 'pending',
-          accessibleBy: await AccessUtil.getGlobalAccessUserIds(),
-        },
-      });
-
-      res.status(201).json({
-        success: true,
-        message: 'Org structure request initiated',
-        requestId: request.id,
-      });
-    } catch (error) {
-      next(error);
-    }
+  static async getOrgRequestById(req: Request, res: Response) {
+    const { id } = req.body;
+    const request = await prisma.orgStructureReq.findUnique({
+      where: { id },
+      include: { company: true },
+    });
+    res.json(request);
   }
 
-  static async approveRequest(req: Request, res: Response, next: NextFunction) {
+  static async getOrgNodeByPath(req: Request, res: Response) {
+    const { nodePath } = req.body;
+    const node = await prisma.orgStructure.findUnique({
+      where: { nodePath },
+    });
+    res.json(node);
+  }
+
+  static async updateOrgRequestStatus(req: Request, res: Response) {
+    const { id, data } = req.body;
+    const updated = await prisma.orgStructureReq.update({
+      where: { id },
+      data,
+    });
+    res.json(updated);
+  }
+
+  // --- Transactional Commit Operations ---
+
+  static async approveOrgRequestCommit(req: Request, res: Response, next: NextFunction) {
     try {
-      const { requestId, approverId, remarks } = req.body;
+      const { id, approverId, remarks, newNodePath, newNodeName, nodeType, parentId } = req.body;
 
-      const request = await prisma.orgStructureReq.findUnique({
-        where: { id: requestId },
-        include: { company: true },
-      });
-
-      if (!request) {
-        return res
-          .status(404)
-          .json({ success: false, message: 'Request not found' });
-      }
-
-      if (request.status !== 'pending') {
-        return res
-          .status(400)
-          .json({ success: false, message: 'Request is already processed' });
-      }
-
-      if (!AccessUtil.isUserPermitted(approverId, request.accessibleBy)) {
-        return res.status(403).json({
-          success: false,
-          message:
-            'Unauthorized: You do not have permission to process this request',
-        });
-      }
-
-      const reqData = request.data as {
-        newNodeName: string;
-        nodeType: string;
-        parentNode: { nodePath: string };
-      };
-      const { newNodeName, nodeType, parentNode } = reqData;
-
-      let newNodePath = '';
-      let parentId: string | null = null;
-
-      if (nodeType === 'ROOT') {
-        newNodePath = `${request.company.companyCode.replace(/[^a-zA-Z0-9_]/g, '_').toUpperCase()}.ROOT`;
-      } else {
-        const parentPath = parentNode.nodePath;
-        const safeName = newNodeName
-          .trim()
-          .replace(/[^a-zA-Z0-9_]/g, '_')
-          .toUpperCase();
-        newNodePath = `${parentPath}.${safeName}`;
-
-        const parentNodeRecord = await prisma.orgStructure.findUnique({
-          where: { nodePath: parentPath },
-        });
-
-        if (!parentNodeRecord && nodeType !== 'ROOT') {
-          return res
-            .status(400)
-            .json({ success: false, message: 'Parent node not found' });
-        }
-        parentId = parentNodeRecord?.id || null;
-      }
-
-      // Check if path already exists
-      const existingNode = await prisma.orgStructure.findUnique({
-        where: { nodePath: newNodePath },
-      });
-
-      if (existingNode) {
-        return res
-          .status(400)
-          .json({ success: false, message: 'Node path already exists' });
-      }
-
-      // Transaction: Create node and update request
       await prisma.$transaction([
         prisma.orgStructure.create({
           data: {
-            companyId: request.companyId,
+            companyId: (await prisma.orgStructureReq.findUnique({ where: { id } }))?.companyId as string,
             nodePath: newNodePath,
             nodeName: newNodeName,
             nodeType: nodeType,
@@ -130,7 +48,7 @@ export class OrgStructureDbController {
           },
         }),
         prisma.orgStructureReq.update({
-          where: { id: requestId },
+          where: { id },
           data: {
             status: 'approved',
             approverId,
@@ -140,11 +58,19 @@ export class OrgStructureDbController {
         }),
       ]);
 
-      res.status(200).json({
-        success: true,
-        message: 'Org structure request approved and node created',
-        nodePath: newNodePath,
+      res.status(200).json({ success: true, message: 'Org structure approved' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async initiateRequest(req: Request, res: Response, next: NextFunction) {
+    try {
+      // Simplified: Just create the record
+      const request = await prisma.orgStructureReq.create({
+        data: req.body,
       });
+      res.status(201).json(request);
     } catch (error) {
       next(error);
     }

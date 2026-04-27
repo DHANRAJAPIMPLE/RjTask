@@ -5,5 +5,6 @@ const router = Router();
 
 router.post('/my-companies', CompanyDbController.getMyCompanies);
 router.post('/groups', CompanyDbController.getGroupCompanies);
+router.post('/get-by-code', CompanyDbController.getCompanyByCode);
 
 export default router;

@@ -1,219 +1,168 @@
-import { PrismaClient, OnboardingStatus, OnboardedType, Status } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import argon2 from 'argon2';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting database seeding...');
+  console.log('Seeding database...');
 
   // 1. Seed Roles
-  console.log('Creating roles...');
-  const roles = await Promise.all([
-    prisma.roles.upsert({
-      where: { roleCode: 'SUPER_ADMIN' },
-      update: {},
-      create: {
-        roleCode: 'SUPER_ADMIN',
-        roleName: 'Super Administrator',
-        category: 'Admin',
-        subCategory: 'Management',
-        permissionLevel: 'Global',
-        view: true,
-        modify: true,
-        approve: true,
-        initiate: true,
-        isActive: true,
-      },
-    }),
-    prisma.roles.upsert({
-      where: { roleCode: 'ADMIN' },
-      update: {},
-      create: {
-        roleCode: 'ADMIN',
-        roleName: 'Administrator',
-        category: 'Admin',
-        subCategory: 'Operations',
-        permissionLevel: 'Company',
-        view: true,
-        modify: true,
-        approve: true,
-        initiate: true,
-        isActive: true,
-      },
-    }),
-    prisma.roles.upsert({
-      where: { roleCode: 'USER' },
-      update: {},
-      create: {
-        roleCode: 'USER',
-        roleName: 'Standard User',
-        category: 'Employee',
-        subCategory: 'General',
-        permissionLevel: 'Node',
-        view: true,
-        modify: false,
-        approve: false,
-        initiate: false,
-        isActive: true,
-      },
-    }),
-  ]);
-
-  // 2. Seed Group Company
-  console.log('Creating group company...');
-  const group = await prisma.groupCompany.upsert({
-    where: { groupCode: 'GC001' },
-    update: {},
-    create: {
-      name: 'Global Enterprises Group',
-      groupCode: 'GC001',
-      remarks: 'Primary seed group',
+  const roles = [
+    {
+      roleCode: 'SA1',
+      roleName: 'Super Admin',
+      category: 'Management',
+      subCategory: 'Executive',
+      permissionLevel: 'Global',
+      view: true,
+      modify: true,
+      approve: true,
+      initiate: true,
     },
-  });
-
-  // 3. Seed Company
-  console.log('Creating company...');
-  const company = await prisma.company.upsert({
-    where: { companyCode: 'COMP001' },
-    update: {},
-    create: {
-      companyCode: 'COMP001',
-      brandName: 'Global Tech',
-      legalName: 'Global Technology Solutions Pvt Ltd',
-      gstNumber: '27AAAAA0000A1Z5',
-      iecode: '0123456789',
-      address: '123 Tech Park, Innovation Way, Pune',
-      registrationDate: new Date(),
+    {
+      roleCode: 'ADM1',
+      roleName: 'Administrator',
+      category: 'Operations',
+      subCategory: 'Head Office',
+      permissionLevel: 'Company',
+      view: true,
+      modify: true,
+      approve: true,
+      initiate: true,
     },
-  });
-
-  // 4. Seed Company Mapping
-  console.log('Mapping company to group...');
-  await prisma.companyMapping.create({
-    data: {
-      companyId: company.id,
-      groupId: group.id,
+    {
+      roleCode: 'BM1',
+      roleName: 'Branch Manager',
+      category: 'Operations',
+      subCategory: 'Branch',
+      permissionLevel: 'Location',
+      view: true,
+      modify: true,
+      approve: false,
+      initiate: true,
     },
-  });
+    {
+      roleCode: 'OPM1',
+      roleName: 'Operations Manager',
+      category: 'Operations',
+      subCategory: 'Department',
+      permissionLevel: 'Department',
+      view: true,
+      modify: true,
+      approve: false,
+      initiate: true,
+    },
+  ];
 
-  // 5. Seed Users
-  console.log('Creating users...');
-  const hashedPassword = await argon2.hash('Admin@123');
+  for (const role of roles) {
+    await prisma.roles.upsert({
+      where: { roleCode: role.roleCode },
+      update: role,
+      create: role,
+    });
+  }
+  console.log('Roles seeded.');
+
+  // 2. Seed Super Admin User
+  const adminPassword = await argon2.hash('Admin@123');
   const superAdmin = await prisma.user.upsert({
     where: { email: 'admin@globaltech.com' },
     update: {},
     create: {
       name: 'Super Admin',
       email: 'admin@globaltech.com',
-      password: hashedPassword,
+      password: adminPassword,
       phone: '9876543210',
     },
   });
+  console.log('Super Admin user created.');
 
-  const managerUser = await prisma.user.upsert({
-    where: { email: 'manager@globaltech.com' },
+  // 3. Seed Initial Group and Company
+  const group = await prisma.groupCompany.upsert({
+    where: { groupCode: 'GLOBAL_GROUP' },
     update: {},
     create: {
-      name: 'Branch Manager',
-      email: 'manager@globaltech.com',
-      password: hashedPassword,
-      phone: '9876543211',
+      name: 'Global Tech Group',
+      groupCode: 'GLOBAL_GROUP',
+      remarks: 'Primary seeding group',
     },
   });
 
-  // 6. Seed User Mapping
-  console.log('Mapping users to companies...');
-  const adminMapping = await prisma.userMapping.create({
-    data: {
+  const company = await prisma.company.upsert({
+    where: { companyCode: 'GTSOL001' },
+    update: {},
+    create: {
+      legalName: 'Global Tech Solutions Pvt Ltd',
+      gstNumber: '27AAAAA0000A1Z5',
+      address: '123 Tech Park, Mumbai, Maharashtra',
+      brandName: 'GlobalTech',
+      iecode: '0123456789',
+      companyCode: 'GTSOL001',
+      registrationDate: new Date('2023-01-01'),
+    },
+  });
+
+  await prisma.companyMapping.upsert({
+    where: { id: 'default-mapping' }, // Note: Upsert needs a unique field. id is @id.
+    update: {},
+    create: {
+      id: 'default-mapping',
+      companyId: company.id,
+      groupId: group.id,
+    },
+  });
+  console.log('Initial Group and Company seeded.');
+
+  // 4. Create Root Org Structure Node
+  const rootNode = await prisma.orgStructure.upsert({
+    where: { nodePath: 'GTSOL001.ROOT' },
+    update: {},
+    create: {
+      companyId: company.id,
+      nodePath: 'GTSOL001.ROOT',
+      nodeName: 'Global Tech Solutions',
+      nodeType: 'ROOT',
+    },
+  });
+  console.log('Root Org Structure node created.');
+
+  // 5. Map Super Admin to Company and give Global Access
+  await prisma.userMapping.upsert({
+    where: { id: 'admin-mapping' },
+    update: {
+      status: 'active',
+    },
+    create: {
+      id: 'admin-mapping',
       userId: superAdmin.id,
       companyId: company.id,
-      status: Status.active,
+      status: 'active',
       designation: 'CTO',
       employeeId: 'EMP001',
     },
   });
 
-  await prisma.userMapping.create({
-    data: {
-      userId: managerUser.id,
-      companyId: company.id,
-      status: Status.active,
-      designation: 'Operations Manager',
-      employeeId: 'EMP002',
-      reportingManager: superAdmin.id,
-    },
-  });
-
-  // 7. Seed Org Structure
-  console.log('Creating org structure...');
-  const rootNode = await prisma.orgStructure.upsert({
-    where: { nodePath: '1' },
+  await prisma.userAccess.upsert({
+    where: { id: 'admin-access' },
     update: {},
     create: {
-      companyId: company.id,
-      nodePath: '1',
-      nodeName: 'Global Tech HQ',
-      nodeType: 'Headquarters',
-    },
-  });
-
-  const itDept = await prisma.orgStructure.upsert({
-    where: { nodePath: '1.2' },
-    update: {},
-    create: {
-      companyId: company.id,
-      nodePath: '1.2',
-      nodeName: 'IT Department',
-      nodeType: 'Department',
-      parentId: rootNode.id,
-    },
-  });
-
-  // 8. Seed User Access
-  console.log('Granting user access...');
-  await prisma.userAccess.create({
-    data: {
+      id: 'admin-access',
       userId: superAdmin.id,
-      roleCode: 'SUPER_ADMIN',
+      roleCode: 'SA1',
       nodeId: rootNode.id,
+      accessType: 'PRIMARY',
       companyId: company.id,
       isGlobalAccess: true,
-      accessType: 'full',
     },
   });
+  console.log('Super Admin mapping and global access configured.');
 
-  await prisma.userAccess.create({
-    data: {
-      userId: managerUser.id,
-      roleCode: 'ADMIN',
-      nodeId: itDept.id,
-      companyId: company.id,
-      isGlobalAccess: false,
-      accessType: 'restricted',
-    },
-  });
-
-  // 9. Seed Onboardings (Samples)
-  console.log('Creating onboarding requests...');
-  await prisma.companyOnboarding.create({
-    data: {
-      initiatorId: superAdmin.id,
-      companyCode: 'COMP_NEW_001',
-      status: OnboardingStatus.approved,
-      approvedAt: new Date(),
-      approverId: superAdmin.id,
-      onboardedType: OnboardedType.new,
-      data: { reason: 'Expansion' },
-      accessibleBy: [superAdmin.id],
-    },
-  });
-
-  console.log('✅ Seeding completed successfully!');
+  console.log('Seeding completed successfully!');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Error during seeding:', e);
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {

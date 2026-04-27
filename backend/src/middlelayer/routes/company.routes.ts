@@ -27,6 +27,7 @@ router.post('/org/fetch', OrgController.fetchOrgStructure);
 // ----------------------------------------------------------
 
 // --------------roles routes--------------------------------
+router.post('/role/create', RoleController.createRoles);
 router.post('/role/fetch-all', RoleController.fetchAllRoles);
 // ----------------------------------------------------------
 
