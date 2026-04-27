@@ -3,7 +3,7 @@ import { AppError } from '../../shared/middlewares/error.middleware';
 import { config } from '../config';
 import { internalPost } from '../utils/internal-fetch.util';
 
-export class OrgStructureController {
+export class OrgController {
   static async initiateOrgRequest(
     req: Request & { user?: { id: string } },
     res: Response,

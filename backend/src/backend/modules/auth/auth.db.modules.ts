@@ -74,6 +74,16 @@ export class AuthDbController {
       const { userId } = req.body;
       const activity = await prisma.userActivity.findFirst({
         where: { userId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
       });
       res.status(200).json(activity);
     } catch (error) {
@@ -115,6 +125,16 @@ export class AuthDbController {
       const { refreshTokenHash } = req.body;
       const activity = await prisma.userActivity.findFirst({
         where: { refreshToken: refreshTokenHash },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
       });
       res.status(200).json(activity);
     } catch (error) {
