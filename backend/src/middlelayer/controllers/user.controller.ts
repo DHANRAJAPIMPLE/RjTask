@@ -357,4 +357,49 @@ export class UserController {
       next(error);
     }
   }
+
+  static async updateUserStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email } = req.body;
+
+      // 1. Fetch user by email
+      const { data: user, ok } = await internalPost<any>(
+        `${config.backendAuthUrl}/get-by-email`,
+        { email },
+      );
+
+      if (!ok || !user) {
+        throw new AppError('User not found', 404);
+      }
+
+      // 2. Determine target status (Toggle)
+      // If any mapping is active, set to inactive. Otherwise set to active.
+      const hasActive = user.userMappings.some((m: any) => m.status === 'active');
+      const targetStatus = hasActive ? 'inactive' : 'active';
+
+      // 3. Update status in Backend
+      const { ok: updateOk } = await internalPost(
+        `${config.backendUrl}/internal/user/update-status`,
+        {
+          userId: user.id,
+          status: targetStatus,
+        },
+      );
+
+      if (!updateOk) {
+        throw new AppError('Failed to update user status', 500);
+      }
+
+      res.status(200).json({
+        message: `User status changed to ${targetStatus}`,
+        status: targetStatus,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  
 }
+
+

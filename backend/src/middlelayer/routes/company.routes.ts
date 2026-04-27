@@ -17,6 +17,7 @@ router.post('/action', CompanyController.actionCompanyOnboarding);
 router.post('/user/initiate', UserController.initiateUserOnboarding);
 router.post('/user/action', UserController.actionUserOnboarding);
 router.post('/user/fetch-all-users', UserController.fetchAllUsers);
+router.post('/user/update-status', UserController.updateUserStatus);
 // ----------------------------------------------------------
 
 //--------------org routes-----------------------------------

@@ -35,4 +35,17 @@ export class UserDbController {
       next(error);
     }
   }
+
+  static async updateUserStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { userId, status } = req.body;
+      await prisma.userMapping.updateMany({
+        where: { userId },
+        data: { status },
+      });
+      res.status(200).json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
