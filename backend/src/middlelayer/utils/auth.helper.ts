@@ -1,4 +1,6 @@
-export const bumpVersion = (currentVersion: string | null | undefined): string => {
+export const bumpVersion = (
+  currentVersion: string | null | undefined,
+): string => {
   const num = parseInt((currentVersion ?? 'v0').replace('v', ''), 10);
   return `v${isNaN(num) ? 1 : num + 1}`;
 };

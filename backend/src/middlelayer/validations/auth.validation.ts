@@ -38,15 +38,9 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   body: z
     .object({
-      email: z
-        .string()
-        .trim()
-        .toLowerCase()
-        .email('Invalid email format'),
-      
-      password: z
-        .string()
-        .min(1, 'Password is required'),
+      email: z.string().trim().toLowerCase().email('Invalid email format'),
+
+      password: z.string().min(1, 'Password is required'),
 
       // action: 0 for normal login, 1 for force login
       action: z

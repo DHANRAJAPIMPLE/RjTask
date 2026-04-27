@@ -68,7 +68,11 @@ export class CompanyDbController {
     }
   }
 
-  static async getCompanyByCode(req: Request, res: Response, next: NextFunction) {
+  static async getCompanyByCode(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
     try {
       const { companyCode } = req.body;
       const company = await prisma.company.findUnique({

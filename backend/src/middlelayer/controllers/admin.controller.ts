@@ -1,14 +1,10 @@
-import { ZodError } from 'zod';
-import type { Request, Response, NextFunction } from 'express';
+import type { Response, NextFunction } from 'express';
 import type { AuthRequest } from '../middlewares/auth.middleware';
 import { AppError } from '../../shared/middlewares/error.middleware';
 import { config } from '../config';
 import { internalPost } from '../utils/internal-fetch.util';
 
-
-
 export class AdminController {
-
   private static formatDate(date: Date | string): string {
     const d = new Date(date);
     const day = String(d.getDate()).padStart(2, '0');
@@ -130,5 +126,4 @@ export class AdminController {
       next(error);
     }
   }
-
 }

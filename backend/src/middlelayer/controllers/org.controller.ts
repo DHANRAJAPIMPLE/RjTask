@@ -18,9 +18,9 @@ export class OrgController {
       }
 
       // 1. Get Company ID from Backend
-      const { data: company, ok: companyOk } = await internalPost<any>(
+      const { data: company, ok: _companyOk } = await internalPost<any>(
         `${config.backendUrl}/internal/company/get-by-code`, // Need to make sure this exists or use a generic fetch
-        { companyCode }
+        { companyCode },
       );
 
       // Wait, let's use a simpler way if get-by-code doesn't exist yet
@@ -30,7 +30,7 @@ export class OrgController {
       // 2. Logic: Get global access IDs
       const { data: globalAccessIds } = await internalPost<string[]>(
         `${config.backendUrl}/internal/onboarding/global-access-ids`,
-        {}
+        {},
       );
 
       // 3. Create request in Backend
@@ -50,10 +50,17 @@ export class OrgController {
       );
 
       if (!ok) {
-        throw new AppError(data.message || 'Failed to initiate org structure request', status);
+        throw new AppError(
+          data.message || 'Failed to initiate org structure request',
+          status,
+        );
       }
 
-      res.status(201).json({ success: true, message: 'Org structure request initiated', requestId: data.id });
+      res.status(201).json({
+        success: true,
+        message: 'Org structure request initiated',
+        requestId: data.id,
+      });
     } catch (error) {
       next(error);
     }
@@ -76,7 +83,7 @@ export class OrgController {
       // 1. Fetch request from Backend
       const { data: request, ok: fetchOk } = await internalPost<any>(
         `${config.backendUrl}/internal/org/get-request`,
-        { id }
+        { id },
       );
 
       if (!fetchOk || !request) {
@@ -89,7 +96,10 @@ export class OrgController {
       }
 
       if (!request.accessibleBy.includes(approverId)) {
-        throw new AppError('Unauthorized: You do not have permission to process this request', 403);
+        throw new AppError(
+          'Unauthorized: You do not have permission to process this request',
+          403,
+        );
       }
 
       // 3. Handle Rejection
@@ -103,7 +113,9 @@ export class OrgController {
             remarks: remark,
           },
         });
-        return res.status(200).json({ success: true, message: 'Org structure request rejected' });
+        return res
+          .status(200)
+          .json({ success: true, message: 'Org structure request rejected' });
       }
 
       // 4. Logic: Path Generation
@@ -117,13 +129,16 @@ export class OrgController {
         newNodePath = `${request.company.companyCode.replace(/[^a-zA-Z0-9_]/g, '_').toUpperCase()}.ROOT`;
       } else {
         const parentPath = parentNode.nodePath;
-        const safeName = newNodeName.trim().replace(/[^a-zA-Z0-9_]/g, '_').toUpperCase();
+        const safeName = newNodeName
+          .trim()
+          .replace(/[^a-zA-Z0-9_]/g, '_')
+          .toUpperCase();
         newNodePath = `${parentPath}.${safeName}`;
 
         // Verify parent node in Backend
         const { data: parentNodeRecord } = await internalPost<any>(
           `${config.backendUrl}/internal/org/get-node`,
-          { nodePath: parentPath }
+          { nodePath: parentPath },
         );
 
         if (!parentNodeRecord) {
@@ -135,14 +150,18 @@ export class OrgController {
       // Check if path exists in Backend
       const { data: existingNode } = await internalPost<any>(
         `${config.backendUrl}/internal/org/get-node`,
-        { nodePath: newNodePath }
+        { nodePath: newNodePath },
       );
       if (existingNode) {
         throw new AppError('Node path already exists', 400);
       }
 
       // 5. Commit Transaction in Backend
-      const { data: commitRes, ok: commitOk, status: commitStatus } = await internalPost(
+      const {
+        data: commitRes,
+        ok: commitOk,
+        status: commitStatus,
+      } = await internalPost(
         `${config.backendUrl}/internal/org/approve-commit`,
         {
           id,
@@ -152,14 +171,21 @@ export class OrgController {
           newNodeName,
           nodeType,
           parentId,
-        }
+        },
       );
 
       if (!commitOk) {
-        throw new AppError(commitRes.message || 'Failed to approve org structure request', commitStatus);
+        throw new AppError(
+          commitRes.message || 'Failed to approve org structure request',
+          commitStatus,
+        );
       }
 
-      res.status(200).json({ success: true, message: 'Org structure request approved and node created', nodePath: newNodePath });
+      res.status(200).json({
+        success: true,
+        message: 'Org structure request approved and node created',
+        nodePath: newNodePath,
+      });
     } catch (error) {
       next(error);
     }

@@ -195,7 +195,7 @@ export class UserController {
       // 1. Logic: Validate reporting manager exists and get their company info
       const { data: manager, ok: managerOk } = await internalPost<any>(
         `${config.backendUrl}/internal/onboarding/user/check-manager`,
-        { email: reportingManager }
+        { email: reportingManager },
       );
 
       if (!managerOk || !manager) {
@@ -205,7 +205,7 @@ export class UserController {
       // 2. Logic: Check if user already exists
       const { data: existingUser } = await internalPost<any>(
         `${config.backendUrl}/internal/onboarding/user/check-exists`,
-        { email }
+        { email },
       );
       if (existingUser) {
         throw new AppError('User already exists in master table', 400);
@@ -231,10 +231,17 @@ export class UserController {
       }
 
       // Logic: Get global access user IDs
-      const { data: globalAccessIds } = await internalPost<string[]>(`${config.backendUrl}/internal/onboarding/global-access-ids`, {});
+      const { data: globalAccessIds } = await internalPost<string[]>(
+        `${config.backendUrl}/internal/onboarding/global-access-ids`,
+        {},
+      );
 
       // Call Backend to create the record
-      const { data: createRes, ok: createOk, status: createStatus } = await internalPost(
+      const {
+        data: createRes,
+        ok: createOk,
+        status: createStatus,
+      } = await internalPost(
         `${config.backendUrl}/internal/onboarding/user/create`,
         {
           initiatorId,
@@ -250,13 +257,20 @@ export class UserController {
       );
 
       if (!createOk) {
-        throw new AppError(createRes.error || 'Failed to initiate user onboarding', createStatus);
+        throw new AppError(
+          createRes.error || 'Failed to initiate user onboarding',
+          createStatus,
+        );
       }
 
-      res.status(201).json({ message: 'User onboarding initiated successfully' });
+      res
+        .status(201)
+        .json({ message: 'User onboarding initiated successfully' });
     } catch (error) {
       if (error instanceof ZodError) {
-        return res.status(400).json({ error: 'Validation failed', details: error.errors });
+        return res
+          .status(400)
+          .json({ error: 'Validation failed', details: error.errors });
       }
       next(error);
     }
@@ -279,7 +293,7 @@ export class UserController {
       // 1. Fetch onboarding record
       const { data: onboarding, ok: fetchOk } = await internalPost<any>(
         `${config.backendUrl}/internal/onboarding/user/get`,
-        { id }
+        { id },
       );
 
       if (!fetchOk || !onboarding) {
@@ -293,37 +307,52 @@ export class UserController {
 
       // 3. Logic: Verify permissions
       if (!onboarding.accessibleBy.includes(approverId)) {
-        throw new AppError('Unauthorized: You do not have permission to process this request', 403);
+        throw new AppError(
+          'Unauthorized: You do not have permission to process this request',
+          403,
+        );
       }
 
       // 4. Handle rejection
       if (action === 'reject') {
-        await internalPost(`${config.backendUrl}/internal/onboarding/user/update-status`, {
-          id,
-          data: {
-            status: 'rejected',
-            approverId,
-            approvedAt: new Date(),
-            approvalRemark: remark,
+        await internalPost(
+          `${config.backendUrl}/internal/onboarding/user/update-status`,
+          {
+            id,
+            data: {
+              status: 'rejected',
+              approverId,
+              approvedAt: new Date(),
+              approvalRemark: remark,
+            },
           },
-        });
+        );
         return res.status(200).json({ message: 'User onboarding rejected' });
       }
 
       // 5. Handle approval (Commit to Backend Transaction)
-      const { data: commitRes, ok: commitOk, status: commitStatus } = await internalPost(
+      const {
+        data: commitRes,
+        ok: commitOk,
+        status: commitStatus,
+      } = await internalPost(
         `${config.backendUrl}/internal/onboarding/user/approve-commit`,
-        { id, approverId, remark }
+        { id, approverId, remark },
       );
 
       if (!commitOk) {
-        throw new AppError(commitRes.error || 'Failed to process user onboarding approval', commitStatus);
+        throw new AppError(
+          commitRes.error || 'Failed to process user onboarding approval',
+          commitStatus,
+        );
       }
 
       res.status(200).json({ message: 'User approved and onboarded' });
     } catch (error) {
       if (error instanceof ZodError) {
-        return res.status(400).json({ error: 'Validation failed', details: error.errors });
+        return res
+          .status(400)
+          .json({ error: 'Validation failed', details: error.errors });
       }
       next(error);
     }

@@ -1,7 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import requestIp from 'request-ip';
 import { AppError } from '../../shared/middlewares/error.middleware';
-import { mapAuthError } from '../utils/error-mapper.util';
 import { HashUtil } from '../../shared/utils/hash.util';
 import { formatUserGroups } from '../utils/user-group.util';
 import { bumpVersion, getExpiryDate } from '../utils/auth.helper';
@@ -16,7 +15,10 @@ export class AuthController {
       const { email, password, name, phone } = req.body;
 
       // 1. Check if user already exists
-      const existingUserRes = await internalPost<any>(`${config.backendAuthUrl}/get-by-email`, { email });
+      const existingUserRes = await internalPost<any>(
+        `${config.backendAuthUrl}/get-by-email`,
+        { email },
+      );
       if (existingUserRes.status !== 404) {
         throw new AppError('User already exists', 400);
       }
@@ -25,19 +27,26 @@ export class AuthController {
       const hashedPassword = await HashUtil.hash(password);
 
       // 3. Create user in Backend DB
-      const createRes = await internalPost<any>(`${config.backendAuthUrl}/user/create`, {
-        email,
-        password: hashedPassword,
-        name,
-        phone,
-      });
+      const createRes = await internalPost<any>(
+        `${config.backendAuthUrl}/user/create`,
+        {
+          email,
+          password: hashedPassword,
+          name,
+          phone,
+        },
+      );
 
       if (!createRes.ok) {
         throw new AppError('Registration failed', createRes.status);
       }
 
       // 4. Logic: Strip ID/Password from user object before sending to frontend
-      const { id: _, password: __, ...userWithoutSensitiveData } = createRes.data;
+      const {
+        id: _,
+        password: _pw,
+        ...userWithoutSensitiveData
+      } = createRes.data;
 
       res.status(201).json({
         message: 'User registered successfully',
@@ -48,15 +57,22 @@ export class AuthController {
     }
   }
 
-
   static async login(req: Request, res: Response, next: NextFunction) {
     try {
-      const { email, password, action, forceLogToken: providedForceLogToken } = req.body;
+      const {
+        email,
+        password,
+        action,
+        forceLogToken: providedForceLogToken,
+      } = req.body;
       const ip = requestIp.getClientIp(req) || 'unknown';
       const userAgent = req.headers['user-agent'] || 'unknown';
 
       // 1. Get user from Backend DB
-      const userRes = await internalPost<any>(`${config.backendAuthUrl}/get-by-email`, { email });
+      const userRes = await internalPost<any>(
+        `${config.backendAuthUrl}/get-by-email`,
+        { email },
+      );
       const user = userRes.data;
 
       if (!userRes.ok || !user) {
@@ -70,7 +86,10 @@ export class AuthController {
       }
 
       // 3. Get existing activity
-      const activityRes = await internalPost<any>(`${config.backendAuthUrl}/activity/get`, { userId: user.id });
+      const activityRes = await internalPost<any>(
+        `${config.backendAuthUrl}/activity/get`,
+        { userId: user.id },
+      );
       const existingActivity = activityRes.data;
 
       // 4. Apply business logic (force login, expiry, etc.)
@@ -135,15 +154,15 @@ export class AuthController {
       const accessToken = TokenUtil.generateAccessToken({ userId: user.id });
 
       // 8. Set Cookies
-      setAuthCookies(res, { 
-        accessToken, 
-        refreshToken, 
-        versionHash 
+      setAuthCookies(res, {
+        accessToken,
+        refreshToken,
+        versionHash,
       });
 
       // 9. Response shaping
       const groups = formatUserGroups(user.userMappings);
-      
+
       res.status(200).json({
         message: 'Login successful',
         user: {
@@ -157,7 +176,6 @@ export class AuthController {
       next(error);
     }
   }
-
 
   static async refreshToken(req: Request, res: Response, next: NextFunction) {
     try {
@@ -183,9 +201,15 @@ export class AuthController {
       const refreshTokenHash = HashUtil.hashToken(refreshToken);
 
       if (userId) {
-        activityRes = await internalPost<any>(`${config.backendAuthUrl}/activity/get`, { userId });
+        activityRes = await internalPost<any>(
+          `${config.backendAuthUrl}/activity/get`,
+          { userId },
+        );
       } else {
-        activityRes = await internalPost<any>(`${config.backendAuthUrl}/activity/get-by-token`, { refreshTokenHash });
+        activityRes = await internalPost<any>(
+          `${config.backendAuthUrl}/activity/get-by-token`,
+          { refreshTokenHash },
+        );
       }
 
       const activity = activityRes.data;
@@ -243,7 +267,6 @@ export class AuthController {
     }
   }
 
-
   static async me(
     req: Request & { user?: { id: string } },
     res: Response,
@@ -257,10 +280,13 @@ export class AuthController {
       }
 
       // 1. Fetch full user profile from Backend DB
-      const { data: user, ok, status } = await internalPost<any>(
-        `${config.backendAuthUrl}/get-by-id`,
-        { userId },
-      );
+      const {
+        data: user,
+        ok,
+        status,
+      } = await internalPost<any>(`${config.backendAuthUrl}/get-by-id`, {
+        userId,
+      });
 
       if (!ok || !user) {
         throw new AppError('Failed to fetch user data', status || 404);
@@ -282,7 +308,6 @@ export class AuthController {
     }
   }
 
-
   static async logout(req: Request, res: Response, next: NextFunction) {
     try {
       const refreshToken = req.cookies?.refreshToken;
@@ -303,5 +328,4 @@ export class AuthController {
       next(error);
     }
   }
-
 }

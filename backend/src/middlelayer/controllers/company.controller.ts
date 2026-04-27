@@ -20,7 +20,11 @@ export class CompanyController {
       const userId = req.user?.id;
 
       // Fetch raw mappings from Backend
-      const { data: mappings, ok, status } = await internalPost<any[]>(
+      const {
+        data: mappings,
+        ok,
+        status,
+      } = await internalPost<any[]>(
         `${config.backendCompanyUrl}/my-companies`,
         { userId },
       );
@@ -64,16 +68,26 @@ export class CompanyController {
       // Logic: Handle Company Code
       let finalCompanyCode = company.companyCode;
       if (finalCompanyCode) {
-        const { data } = await internalPost<any>(`${config.backendUrl}/internal/onboarding/company/check-code`, { code: finalCompanyCode });
+        const { data } = await internalPost<any>(
+          `${config.backendUrl}/internal/onboarding/company/check-code`,
+          { code: finalCompanyCode },
+        );
         if (data.exists) {
-          finalCompanyCode = await CodeGenUtil.generateUniqueCompanyCode(company.name);
+          finalCompanyCode = await CodeGenUtil.generateUniqueCompanyCode(
+            company.name,
+          );
         }
       } else {
-        finalCompanyCode = await CodeGenUtil.generateUniqueCompanyCode(company.name);
+        finalCompanyCode = await CodeGenUtil.generateUniqueCompanyCode(
+          company.name,
+        );
       }
 
       // Logic: Get global access user IDs
-      const { data: globalAccessIds } = await internalPost<string[]>(`${config.backendUrl}/internal/onboarding/global-access-ids`, {});
+      const { data: globalAccessIds } = await internalPost<string[]>(
+        `${config.backendUrl}/internal/onboarding/global-access-ids`,
+        {},
+      );
 
       // Call Backend to create the record
       const { data, ok, status } = await internalPost(
@@ -93,7 +107,10 @@ export class CompanyController {
       );
 
       if (!ok) {
-        throw new AppError(data.error || 'Failed to initiate onboarding', status);
+        throw new AppError(
+          data.error || 'Failed to initiate onboarding',
+          status,
+        );
       }
 
       res.status(201).json({
@@ -103,7 +120,9 @@ export class CompanyController {
       });
     } catch (error) {
       if (error instanceof ZodError) {
-        return res.status(400).json({ error: 'Validation failed', details: error.errors });
+        return res
+          .status(400)
+          .json({ error: 'Validation failed', details: error.errors });
       }
       next(error);
     }
@@ -126,7 +145,7 @@ export class CompanyController {
       // 1. Fetch onboarding record
       const { data: onboarding, ok: fetchOk } = await internalPost<any>(
         `${config.backendUrl}/internal/onboarding/company/get`,
-        { id }
+        { id },
       );
 
       if (!fetchOk || !onboarding) {
@@ -140,40 +159,56 @@ export class CompanyController {
 
       // 3. Logic: Verify permissions
       if (!onboarding.accessibleBy.includes(approverId)) {
-        throw new AppError('Unauthorized: You do not have permission to process this request', 403);
+        throw new AppError(
+          'Unauthorized: You do not have permission to process this request',
+          403,
+        );
       }
 
       // 4. Handle rejection
       if (action === 'reject') {
-        await internalPost(`${config.backendUrl}/internal/onboarding/company/update-status`, {
-          id,
-          data: {
-            status: 'rejected',
-            approverId,
-            approvedAt: new Date(),
-            approvalRemark: remark,
+        await internalPost(
+          `${config.backendUrl}/internal/onboarding/company/update-status`,
+          {
+            id,
+            data: {
+              status: 'rejected',
+              approverId,
+              approvedAt: new Date(),
+              approvalRemark: remark,
+            },
           },
-        });
+        );
         return res.status(200).json({ message: 'Onboarding request rejected' });
       }
 
       // 5. Handle approval (Commit to Backend Transaction)
-      const { data: commitRes, ok: commitOk, status: commitStatus } = await internalPost(
+      const {
+        data: commitRes,
+        ok: commitOk,
+        status: commitStatus,
+      } = await internalPost(
         `${config.backendUrl}/internal/onboarding/company/approve-commit`,
-        { id, approverId, remark }
+        { id, approverId, remark },
       );
 
       if (!commitOk) {
-        throw new AppError(commitRes.error || 'Failed to process onboarding approval', commitStatus);
+        throw new AppError(
+          commitRes.error || 'Failed to process onboarding approval',
+          commitStatus,
+        );
       }
 
-      res.status(200).json({ message: 'Onboarding request approved and data populated' });
+      res
+        .status(200)
+        .json({ message: 'Onboarding request approved and data populated' });
     } catch (error) {
       if (error instanceof ZodError) {
-        return res.status(400).json({ error: 'Validation failed', details: error.errors });
+        return res
+          .status(400)
+          .json({ error: 'Validation failed', details: error.errors });
       }
       next(error);
     }
   }
 }
-

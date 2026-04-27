@@ -18,14 +18,17 @@ export class RoleController {
       }
 
       if (!Array.isArray(rolesData)) {
-        throw new AppError('Invalid data format. Expected an array of roles.', 400);
+        throw new AppError(
+          'Invalid data format. Expected an array of roles.',
+          400,
+        );
       }
 
       const results = [];
       for (const role of rolesData) {
         const { data, ok } = await internalPost(
           `${config.backendUrl}/internal/roles/upsert-role`,
-          role
+          role,
         );
         if (ok) {
           results.push(data);

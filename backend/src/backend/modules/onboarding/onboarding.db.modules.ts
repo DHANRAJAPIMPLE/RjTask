@@ -113,7 +113,11 @@ export class OnboardingDbController {
 
   // --- Transactional Commit Operations (Keep as atomic transactions) ---
 
-  static async approveCompanyOnboarding(req: Request, res: Response, next: NextFunction) {
+  static async approveCompanyOnboarding(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
     try {
       const { id, approverId, remark } = req.body;
 
@@ -236,7 +240,11 @@ export class OnboardingDbController {
     }
   }
 
-  static async approveUserOnboarding(req: Request, res: Response, next: NextFunction) {
+  static async approveUserOnboarding(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
     try {
       const { id, approverId, remark } = req.body;
 
@@ -303,7 +311,9 @@ export class OnboardingDbController {
           for (const perm of permissions) {
             const { accessType, roleName, nodePath } = perm;
             const role = await tx.roles.findUnique({ where: { roleName } });
-            const node = await tx.orgStructure.findUnique({ where: { nodePath } });
+            const node = await tx.orgStructure.findUnique({
+              where: { nodePath },
+            });
 
             if (role && node) {
               await tx.userAccess.create({

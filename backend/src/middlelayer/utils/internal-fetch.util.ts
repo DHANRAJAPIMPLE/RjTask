@@ -49,4 +49,3 @@ export const internalPost = async <T = any>(
   url: string,
   body?: Record<string, any>,
 ) => internalFetch<T>(url, 'POST', body);
-

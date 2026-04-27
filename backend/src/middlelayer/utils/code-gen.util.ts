@@ -23,7 +23,10 @@ export class CodeGenUtil {
     let isUnique = false;
 
     while (!isUnique) {
-      const { data } = await internalPost<any>(`${config.backendUrl}/internal/onboarding/company/check-code`, { code });
+      const { data } = await internalPost<any>(
+        `${config.backendUrl}/internal/onboarding/company/check-code`,
+        { code },
+      );
       if (!data.exists) {
         isUnique = true;
       } else {
@@ -43,7 +46,10 @@ export class CodeGenUtil {
     let isUnique = false;
 
     while (!isUnique) {
-      const { data } = await internalPost<any>(`${config.backendUrl}/internal/onboarding/group/check-code`, { code });
+      const { data } = await internalPost<any>(
+        `${config.backendUrl}/internal/onboarding/group/check-code`,
+        { code },
+      );
       if (!data.exists) {
         isUnique = true;
       } else {

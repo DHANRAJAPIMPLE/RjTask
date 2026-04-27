@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../lib/prisma';
-import { AccessUtil } from '../../utils/access.util';
 
 export class OrgStructureDbController {
   // --- Internal Atomic Operations ---
@@ -33,14 +32,28 @@ export class OrgStructureDbController {
 
   // --- Transactional Commit Operations ---
 
-  static async approveOrgRequestCommit(req: Request, res: Response, next: NextFunction) {
+  static async approveOrgRequestCommit(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
     try {
-      const { id, approverId, remarks, newNodePath, newNodeName, nodeType, parentId } = req.body;
+      const {
+        id,
+        approverId,
+        remarks,
+        newNodePath,
+        newNodeName,
+        nodeType,
+        parentId,
+      } = req.body;
 
       await prisma.$transaction([
         prisma.orgStructure.create({
           data: {
-            companyId: (await prisma.orgStructureReq.findUnique({ where: { id } }))?.companyId as string,
+            companyId: (
+              await prisma.orgStructureReq.findUnique({ where: { id } })
+            )?.companyId as string,
             nodePath: newNodePath,
             nodeName: newNodeName,
             nodeType: nodeType,
@@ -58,13 +71,19 @@ export class OrgStructureDbController {
         }),
       ]);
 
-      res.status(200).json({ success: true, message: 'Org structure approved' });
+      res
+        .status(200)
+        .json({ success: true, message: 'Org structure approved' });
     } catch (error) {
       next(error);
     }
   }
 
-  static async initiateRequest(req: Request, res: Response, next: NextFunction) {
+  static async initiateRequest(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
     try {
       // Simplified: Just create the record
       const request = await prisma.orgStructureReq.create({

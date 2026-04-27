@@ -19,7 +19,6 @@ router.post('/user/action', UserController.actionUserOnboarding);
 router.post('/user/fetch-all-users', UserController.fetchAllUsers);
 // ----------------------------------------------------------
 
-
 //--------------org routes-----------------------------------
 router.post('/org/initiate', OrgController.initiateOrgRequest);
 router.post('/org/approve', OrgController.approveOrgRequest);

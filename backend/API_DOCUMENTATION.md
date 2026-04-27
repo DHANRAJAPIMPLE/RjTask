@@ -7,7 +7,7 @@ This document provides details for the Middle-Layer APIs (Port 5000). All APIs r
 ## 1. Authentication Module
 
 ### Register User
-- **Endpoint**: `POST /api/auth/register`
+- **Endpoint**: `POST /api/v1/auth/register`
 - **Request Body**:
 ```json
 {
@@ -30,7 +30,7 @@ This document provides details for the Middle-Layer APIs (Port 5000). All APIs r
 ```
 
 ### Login User
-- **Endpoint**: `POST /api/auth/login`
+- **Endpoint**: `POST /api/v1/auth/login`
 - **Request Body**:
 ```json
 {
@@ -53,7 +53,7 @@ This document provides details for the Middle-Layer APIs (Port 5000). All APIs r
 ```
 
 ### Get Current User (Me)
-- **Endpoint**: `GET /api/auth/me`
+- **Endpoint**: `GET /api/v1/auth/me`
 - **Success Response (200)**:
 ```json
 {
@@ -71,7 +71,7 @@ This document provides details for the Middle-Layer APIs (Port 5000). All APIs r
 ## 2. Onboarding Module
 
 ### Initiate Company Onboarding
-- **Endpoint**: `POST /api/company/initiate`
+- **Endpoint**: `POST /api/v1/company-settings/initiate`
 - **Request Body**:
 ```json
 {
@@ -110,7 +110,7 @@ This document provides details for the Middle-Layer APIs (Port 5000). All APIs r
 ```
 
 ### Action Company Onboarding (Approve/Reject)
-- **Endpoint**: `POST /api/company/action`
+- **Endpoint**: `POST /api/v1/company-settings/action`
 - **Request Body**:
 ```json
 {
@@ -121,7 +121,19 @@ This document provides details for the Middle-Layer APIs (Port 5000). All APIs r
 ```
 
 ### Initiate User Onboarding
-- **Endpoint**: `POST /api/user/initiate`
+- **Endpoint**: `POST /api/v1/company-settings/user/action`
+- **Request Body**:
+```json
+{
+  "id": "-uuid",
+  "action": "approve",
+  "remark": "Looks good"
+}
+```
+
+
+### Initiate User Onboarding
+- **Endpoint**: `POST /api/v1/company-settings/user/initiate`
 - **Request Body**:
 ```json
 {
@@ -148,7 +160,7 @@ This document provides details for the Middle-Layer APIs (Port 5000). All APIs r
 ## 3. Organization Structure Module
 
 ### Initiate Org Request
-- **Endpoint**: `POST /api/org/initiate`
+- **Endpoint**: `POST /api/v1/company-settings/org/initiate`
 - **Request Body**:
 ```json
 {
@@ -162,7 +174,7 @@ This document provides details for the Middle-Layer APIs (Port 5000). All APIs r
 ```
 
 ### Approve Org Request
-- **Endpoint**: `POST /api/org/approve`
+- **Endpoint**: `POST /api/v1/company-settings/org/approve`
 - **Request Body**:
 ```json
 {
@@ -173,7 +185,7 @@ This document provides details for the Middle-Layer APIs (Port 5000). All APIs r
 ```
 
 ### Fetch Org Structure
-- **Endpoint**: `POST /api/org/fetch`
+- **Endpoint**: `POST /api/v1/company-settings/org/fetch`
 - **Request Body**:
 ```json
 {
@@ -205,7 +217,7 @@ This document provides details for the Middle-Layer APIs (Port 5000). All APIs r
 ## 4. Admin & Management
 
 ### Fetch All Users
-- **Endpoint**: `GET /api/user/fetch-all`
+- **Endpoint**: `GET /api/v1/company-settings/user/fetch-all`
 - **Success Response (200)**:
 ```json
 {
@@ -227,7 +239,7 @@ This document provides details for the Middle-Layer APIs (Port 5000). All APIs r
 ```
 
 ### Fetch Groups & Companies
-- **Endpoint**: `GET /api/admin/groups`
+- **Endpoint**: `GET /api/v1/admin/groups`
 - **Success Response (200)**:
 ```json
 {
@@ -240,22 +252,5 @@ This document provides details for the Middle-Layer APIs (Port 5000). All APIs r
 }
 ```
 
-### Create/Upsert Roles
-- **Endpoint**: `POST /api/roles/create`
-- **Request Body**:
-```json
-[
-  {
-    "roleCode": "MGR1",
-    "roleName": "Manager",
-    "category": "Management",
-    "subCategory": "Dept",
-    "capabilities": {
-      "view": true,
-      "modify": true,
-      "approve": false,
-      "initiate": true
-    }
-  }
-]
+
 ```

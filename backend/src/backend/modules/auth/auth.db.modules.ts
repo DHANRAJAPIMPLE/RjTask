@@ -1,10 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../lib/prisma';
 
-
-
 export class AuthDbController {
- 
   static async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const { userId } = req.body;
@@ -120,7 +117,11 @@ export class AuthDbController {
     }
   }
 
-  static async getActivityByToken(req: Request, res: Response, next: NextFunction) {
+  static async getActivityByToken(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
     try {
       const { refreshTokenHash } = req.body;
       const activity = await prisma.userActivity.findFirst({

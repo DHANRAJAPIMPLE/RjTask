@@ -16,14 +16,12 @@ app.use(
       } else {
         callback(new Error('Not allowed by CORS'));
       }
-    }, 
+    },
     credentials: true,
   }),
 );
 app.use(express.json());
 app.use(cookieParser());
-
-
 
 // Routes
 app.use('/api/v1/auth', authRoutes);

@@ -1,7 +1,5 @@
 // need to delete this file
 
-
-
 import type { Request, Response, NextFunction } from 'express';
 
 export class AppError extends Error {

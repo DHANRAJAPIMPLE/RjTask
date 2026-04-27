@@ -15,7 +15,10 @@ const companyCodeSchema = z
   .trim()
   .min(3, 'Company code must be at least 3 characters')
   .max(20, 'Company code too long')
-  .regex(/^[A-Z0-9_-]+$/, 'Company code must be alphanumeric (caps, numbers, _, -)')
+  .regex(
+    /^[A-Z0-9_-]+$/,
+    'Company code must be alphanumeric (caps, numbers, _, -)',
+  )
   .nullable()
   .optional();
 
@@ -24,7 +27,10 @@ const groupCodeSchema = z
   .trim()
   .min(3, 'Group code must be at least 3 characters')
   .max(20, 'Group code too long')
-  .regex(/^[A-Z0-9_-]+$/, 'Group code must be alphanumeric (caps, numbers, _, -)')
+  .regex(
+    /^[A-Z0-9_-]+$/,
+    'Group code must be alphanumeric (caps, numbers, _, -)',
+  )
   .nullable()
   .optional();
 
@@ -36,7 +42,12 @@ export const companyOnboardingSchema = z.object({
       .min(2, 'Group name must be at least 2 characters')
       .max(100, 'Group name too long'),
     groupCode: groupCodeSchema.optional(),
-    remarks: z.string().trim().max(500, 'Remarks too long').nullable().optional(),
+    remarks: z
+      .string()
+      .trim()
+      .max(500, 'Remarks too long')
+      .nullable()
+      .optional(),
   }),
   company: z.object({
     companyCode: companyCodeSchema.optional(),
@@ -50,7 +61,7 @@ export const companyOnboardingSchema = z.object({
       .trim()
       .regex(
         /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
-        'Invalid GST format (Example: 27AAAAA0000A1Z5)'
+        'Invalid GST format (Example: 27AAAAA0000A1Z5)',
       ),
     brand: z
       .string()
@@ -81,19 +92,19 @@ export const companyOnboardingSchema = z.object({
           .trim()
           .min(2, 'Name must be at least 2 characters')
           .max(100, 'Name too long'),
-        email: z
-          .string()
-          .trim()
-          .toLowerCase()
-          .email('Invalid email format'),
+        email: z.string().trim().toLowerCase().email('Invalid email format'),
         phone: phoneSchema,
         designation: z
           .string()
           .trim()
           .min(2, 'Designation must be at least 2 characters')
           .max(100, 'Designation too long'),
-        employeeId: z.string().trim().max(50, 'Employee ID too long').optional(),
-      })
+        employeeId: z
+          .string()
+          .trim()
+          .max(50, 'Employee ID too long')
+          .optional(),
+      }),
     )
     .min(1, 'At least one signatory is required')
     .max(2, 'Maximum 2 signatories allowed'),
@@ -112,11 +123,7 @@ export const userOnboardingSchema = z.object({
       .trim()
       .min(2, 'Name must be at least 2 characters')
       .max(20, 'Name too long'),
-    email: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .email('Invalid email format'),
+    email: z.string().trim().toLowerCase().email('Invalid email format'),
     phone: phoneSchema,
     incorporationDate: z
       .string()
@@ -147,10 +154,13 @@ export const userOnboardingSchema = z.object({
         accessType: z.string().trim().min(1, 'Access type is required'),
         roleName: z.string().trim().min(1, 'Role name is required'),
         roleCategory: z.string().trim().min(1, 'Role category is required'),
-        roleSubCategory: z.string().trim().min(1, 'Role sub-category is required'),
+        roleSubCategory: z
+          .string()
+          .trim()
+          .min(1, 'Role sub-category is required'),
         nodeName: z.string().trim().min(1, 'Node name is required'),
         nodePath: z.string().trim().min(1, 'Node path is required'),
-      })
+      }),
     )
     .max(50, 'Too many permissions')
     .optional(),

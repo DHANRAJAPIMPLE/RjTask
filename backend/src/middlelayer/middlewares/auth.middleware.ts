@@ -101,7 +101,10 @@ export const authMiddleware = async (
     if (isExpired || !accessToken) {
       if (!refreshToken) {
         clearAuthCookies(res);
-        throw new AppError(mapAuthError('Unauthorized - No refresh token'), 401);
+        throw new AppError(
+          mapAuthError('Unauthorized - No refresh token'),
+          401,
+        );
       }
 
       const refreshTokenHash = HashUtil.hashToken(refreshToken);
@@ -128,7 +131,9 @@ export const authMiddleware = async (
       next(error);
     } else {
       clearAuthCookies(res);
-      next(new AppError(mapAuthError('Unauthorized - Authentication failed'), 401));
+      next(
+        new AppError(mapAuthError('Unauthorized - Authentication failed'), 401),
+      );
     }
   }
 };
