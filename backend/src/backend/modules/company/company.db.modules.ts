@@ -28,15 +28,30 @@ export class CompanyDbController {
     try {
       // 1. Fetch groups and their companies (Active)
       const groups = await prisma.groupCompany.findMany({
-        include: {
-          companyMappings: {
-            include: {
-              company: true,
+  include: {
+    companyMappings: {
+      include: {
+        company: {
+          include: {
+            userMappings: {
+              include: {
+                user: {
+                  include: {
+                    userAccesses: {
+                      where: {
+                        isGlobalAccess: true,
+                      },
+                    },
+                  },
+                },
+              },
             },
           },
         },
-      });
-
+      },
+    },
+  },
+});
       // 2. Fetch companies NOT in any group (Solo)
       const soloCompanies = await prisma.company.findMany({
         where: {
@@ -44,11 +59,34 @@ export class CompanyDbController {
             none: {},
           },
         },
+        include: {
+            userMappings: {
+              include: {
+                user: {
+                  include: {
+                    userAccesses: {
+                      where: {
+                        isGlobalAccess: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
       });
 
       // 3. Fetch pending onboarding records
       const pendingOnboardings = await prisma.companyOnboarding.findMany({
         where: { status: 'pending' },
+        include: {
+          initiator: {
+            select: { name: true, email: true },
+          },
+          approver: {
+            select: { name: true, email: true },
+          },
+        },
       });
 
       res.status(200).json({

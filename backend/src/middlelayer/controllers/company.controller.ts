@@ -89,6 +89,29 @@ export class CompanyController {
         {},
       );
 
+     const emails = signatories.map((signatory) => signatory.email);
+     const phoneNumbers = signatories.map((signatory) => signatory.phone);
+
+     const uniqueEmail = [...new Set(emails)];
+     const uniquePhoneNumbers = [...new Set(phoneNumbers)];
+     
+     
+    let databaseEmailExists : String = "";
+      // check email already exist 
+      for(const signatory of signatories) {
+        const existingUserRes = await internalPost<any>(
+      `${config.backendAuthUrl}/get-by-email`,
+      { email: signatory.email },
+    );
+      if (existingUserRes.ok) {
+        databaseEmailExists += signatory.email + ",";
+      }
+    }
+
+    if(uniqueEmail.length !== emails.length || uniquePhoneNumbers.length !== phoneNumbers.length || databaseEmailExists !== "") {
+      throw new AppError(`Following users are already exists in database : ${databaseEmailExists}`, 400);
+     }
+    
       // Call Backend to create the record
       const { data, ok, status } = await internalPost(
         `${config.backendUrl}/internal/onboarding/company/create`,

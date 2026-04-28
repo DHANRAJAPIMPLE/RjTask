@@ -21,8 +21,10 @@ export class UserController {
   static async fetchAllUsers(req: Request, res: Response, next: NextFunction) {
     try {
       // 1. Fetch raw data from Backend (5001)
+      const body = req.body;
       const { data, ok, status } = await internalPost<any>(
         `${config.backendUrl}/internal/user/fetch-all`,
+          body.companyCode
       );
 
       if (!ok) {
@@ -161,6 +163,12 @@ export class UserController {
             createdAt: UserController.formatDate(onb.createdAt),
             designation: basic.designation || 'N/A',
             reportingManager: basic.reportingManager || 'N/A',
+            initiatorName: onb.initiator?.name || 'N/A',
+            initiatorEmail: onb.initiator?.email || 'N/A',
+            initiatedDate: UserController.formatDate(onb.createdAt),
+            approverName: onb.approver?.name || 'N/A',
+            approverEmail: onb.approver?.email || 'N/A',
+            approvedDate: onb.approvedAt ? UserController.formatDate(onb.approvedAt) : 'N/A',
           },
           primary,
           secondary,

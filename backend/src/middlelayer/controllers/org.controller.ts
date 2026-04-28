@@ -4,6 +4,15 @@ import { config } from '../config';
 import { internalPost } from '../utils/internal-fetch.util';
 
 export class OrgController {
+  private static formatDate(date: Date | string | null): string {
+    if (!date) return 'N/A';
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+
   static async initiateOrgRequest(
     req: Request & { user?: { id: string } },
     res: Response,
@@ -126,7 +135,7 @@ export class OrgController {
       let parentId: string | null = null;
 
       if (nodeType === 'ROOT') {
-        newNodePath = `${request.company.companyCode.replace(/[^a-zA-Z0-9_]/g, '_').toUpperCase()}.ROOT`;
+        newNodePath = `${request.company.companyCode.replace(/[^a-zA-Z0-9_]/g, '_').toUpperCase()}`;
       } else {
         const parentPath = parentNode.nodePath;
         const safeName = newNodeName
@@ -227,6 +236,12 @@ export class OrgController {
           newNodeName: reqData.newNodeName,
           nodeType: reqData.nodeType,
           parentNode: reqData.parentNode,
+          initiatorName: req.initiator?.name || 'N/A',
+          initiatorEmail: req.initiator?.email || 'N/A',
+          initiatedDate: OrgController.formatDate(req.createdAt),
+          approverName: req.approver?.name || 'N/A',
+          approverEmail: req.approver?.email || 'N/A',
+          approvedDate: req.approvedAt ? OrgController.formatDate(req.approvedAt) : 'N/A',
         };
       });
 

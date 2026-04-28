@@ -10,6 +10,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum NodeType {
+  ROOT
+  DEPARTMENT
+  TEAM
+  PLANT
+  LOCATION
+}
 model User {
   id         String   @id @default(uuid())
   name       String
@@ -39,11 +46,12 @@ model Company {
   gstNumber         String   @unique
   legalName         String  
   address            String
+  status            Status
   registrationDate  DateTime @default(now())
   brandName         String   
-  iecode             String   @unique
+  iecode            String   @unique
   companyCode       String   @unique
-  createdAt          DateTime @default(now())
+  createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt 
 
   // Relations
@@ -59,10 +67,11 @@ model Company {
 model GroupCompany {
   id         String   @id @default(uuid())
   name       String
-  groupCode String   @unique
+  status     Status
+  groupCode  String   @unique
   remarks    String? 
   createdAt  DateTime @default(now())
-  updatedAt DateTime @updatedAt 
+  updatedAt  DateTime @updatedAt 
 
   // Relations
   companyMappings CompanyMapping[]
@@ -97,7 +106,7 @@ model CompanyMapping {
   id           String   @id @default(uuid())
   companyId   String   
   groupId     String  
-  createdAt    DateTime @default(now()) 
+  createdAt   DateTime @default(now()) 
   updatedAt   DateTime @updatedAt 
 
   // FK Relations

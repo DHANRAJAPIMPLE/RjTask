@@ -40,7 +40,8 @@ export const companyOnboardingSchema = z.object({
       .string()
       .trim()
       .min(2, 'Group name must be at least 2 characters')
-      .max(100, 'Group name too long'),
+      .max(100, 'Group name too long') 
+      .toUpperCase(),
     groupCode: groupCodeSchema.optional(),
     remarks: z
       .string()
@@ -55,6 +56,7 @@ export const companyOnboardingSchema = z.object({
       .string()
       .trim()
       .min(2, 'Company name must be at least 2 characters')
+      .toUpperCase()
       .max(150, 'Company name too long'),
     gst: z
       .string()

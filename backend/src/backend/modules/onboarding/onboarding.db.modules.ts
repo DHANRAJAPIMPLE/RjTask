@@ -3,6 +3,10 @@ import { prisma } from '../../lib/prisma';
 import { HashUtil } from '../../../shared/utils/hash.util';
 import { AccessUtil } from '../../utils/access.util';
 
+function toTitleCase(str: string): string {
+  return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export class OnboardingDbController {
   // --- Internal Atomic Operations ---
 
@@ -143,6 +147,7 @@ export class OnboardingDbController {
               data: {
                 name: group.name,
                 groupCode: groupCode,
+                status: 'active',
                 remarks: group.remarks || '',
               },
             });
@@ -161,6 +166,7 @@ export class OnboardingDbController {
             registrationDate: company.registeredAt
               ? new Date(company.registeredAt)
               : new Date(),
+            status: 'active',
           },
         });
 

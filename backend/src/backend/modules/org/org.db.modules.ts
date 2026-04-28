@@ -120,6 +120,14 @@ export class OrgStructureDbController {
           companyId: company.id,
           status: 'pending',
         },
+        include: {
+          initiator: {
+            select: { name: true, email: true },
+          },
+          approver: {
+            select: { name: true, email: true },
+          },
+        },
       });
 
       // Map to remove internal IDs and match user's desired format
