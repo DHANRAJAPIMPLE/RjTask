@@ -132,7 +132,7 @@ static async updateOrgRequestStatus(
   }
 }
 
-  static async initiateRequest(
+static async initiateRequest(
     req: Request,
     res: Response,
     next: NextFunction,
@@ -161,9 +161,9 @@ static async updateOrgRequestStatus(
     } catch (error) {
       next(error);
     }
-  }
+}
 
-  static async fetchStructure(req: Request, res: Response, next: NextFunction) {
+static async fetchStructure(req: Request, res: Response, next: NextFunction) {
     try {
       const { companyCode } = req.body;
 
@@ -187,23 +187,14 @@ static async updateOrgRequestStatus(
         where: {
           companyId: company.id,
           status: 'pending',
-        },
-        include: {
-          // No longer using initiator/approver relations as they were removed
-        },
-      });
+        }
+        });
 
       // Map to remove internal IDs and match user's desired format
       const safeNodes = nodes.map((node) => ({
         nodeName: node.nodeName,
         nodeType: node.nodeType,
-        nodePath: node.nodePath,
-        initiatorName: null,
-        initiatorEmail: null,
-        initiatedDate: null,
-        approverName: null,
-        approverEmail: null,
-        approvedDate: null,
+        nodePath: node.nodePath
       }));
 
       res.status(200).json({

@@ -5,23 +5,28 @@ export class UserDbController {
   static async fetchAllUsers(req: Request, res: Response, next: NextFunction) {
     try {
       // Logic: Fetch raw users with their related mappings, company, and access details
-      const {companyCode} = req.body;
-      
-      const company = await prisma.company.findUnique({
-        where: { companyCode: companyCode },
-      });
-      if (!company) {
-        throw new Error('Company not found');
+      const { companyCode } = req.body;
+      let companyId: string | undefined;
+
+      if (companyCode) {
+        const company = await prisma.company.findUnique({
+          where: { companyCode: companyCode },
+        });
+        if (company) {
+          companyId = company.id;
+        }
       }
 
       const users = await prisma.user.findMany({
-        where:{
-          userMappings:{
-            some:{
-              companyId: company.id
+        where: companyId
+          ? {
+              userMappings: {
+                some: {
+                  companyId: companyId,
+                },
+              },
             }
-          }
-        },
+          : {},
         include: {
           userMappings: {
             include: {

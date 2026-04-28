@@ -47,14 +47,8 @@ export class AdminController {
             gst: cm.company.gstNumber,
             brand: cm.company.brandName,
             iecode: cm.company.iecode || '',
-            registration: AdminController.formatDate(cm.company.registrationDate),
-            address: cm.company.address || '',
-            initiatorName: cm.company.initiator?.name || null,
-            initiatorEmail: cm.company.initiator?.email || null,
-            initiatedDate: cm.company.createdAt ? AdminController.formatDate(cm.company.createdAt) : null,
-            approverName: cm.company.approver?.name || null,
-            approverEmail: cm.company.approver?.email || null,
-            approvedDate: cm.company.approvedAt ? AdminController.formatDate(cm.company.approvedAt) : null,
+            registration: cm.company.registrationDate,
+            address: cm.company.address || ''
           })),
           signatories: [] as any[],
         };
@@ -78,7 +72,7 @@ export class AdminController {
         });
         groupEntry.signatories = Array.from(signatoryMap.values());
 
-        if (g.status === 'active') {
+        if (g.status === 'ACTIVE') {
           active.push(groupEntry);
         } else {
           inactive.push(groupEntry);
@@ -99,14 +93,8 @@ export class AdminController {
               gst: c.gstNumber,
               brand: c.brandName,
               iecode: c.iecode || '',
-              registration: AdminController.formatDate(c.registrationDate),
-              address: c.address || '',
-              initiatorName: c.initiator?.name || null,
-              initiatorEmail: c.initiator?.email || null,
-              initiatedDate: c.createdAt ? AdminController.formatDate(c.createdAt) : null,
-              approverName: c.approver?.name || null,
-              approverEmail: c.approver?.email || null,
-              approvedDate: c.approvedAt ? AdminController.formatDate(c.approvedAt) : null,
+              registration:c.registrationDate,
+              address: c.address || ''
             },
           ],
           signatories: (c.userMappings || []).map((um: any) => ({
@@ -118,7 +106,7 @@ export class AdminController {
           })),
         };
 
-        if (c.status === 'active') {
+        if (c.status === 'ACTIVE') {
           active.push(soloEntry);
         } else {
           inactive.push(soloEntry);
@@ -151,16 +139,11 @@ export class AdminController {
           gst: company.gst || '',
           brand: company.brand || '',
           iecode: company.ieCode || '',
-          registration: company.registeredAt
-            ? AdminController.formatDate(company.registeredAt)
-            : '',
+          registration: company.registeredAt ? company.registeredAt : '',
           address: company.address || '',
           initiatorName: onb.initiator?.name || null,
           initiatorEmail: onb.initiator?.email || null,
-          initiatedDate: AdminController.formatDate(onb.createdAt),
-          approverName: onb.approver?.name || null,
-          approverEmail: onb.approver?.email || null,
-          approvedDate: onb.approvedAt ? AdminController.formatDate(onb.approvedAt) : null,
+          initiatedDate: onb.createdAt
         });
 
         // Add signatories if not already there

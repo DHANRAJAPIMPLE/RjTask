@@ -27,10 +27,14 @@ export class OrgController {
       }
 
       // 1. Get Company ID from Backend
-      const { data: company, ok: _companyOk } = await internalPost<any>(
-        `${config.backendUrl}/internal/company/get-by-code`, // Need to make sure this exists or use a generic fetch
+      const { data: company, ok: companyOk } = await internalPost<any>(
+        `${config.backendUrl}/internal/company/get-by-code`,
         { companyCode },
       );
+
+      if (!companyOk || !company) {
+        throw new AppError('Company not found', 404);
+      }
 
       // Wait, let's use a simpler way if get-by-code doesn't exist yet
       // Actually, I'll assume I might need to add it or use an existing one.
@@ -171,6 +175,7 @@ export class OrgController {
         `${config.backendUrl}/internal/org/action`,
         {
           id,
+          status: 'approved',
           approverId,
           remarks: remark,
           newNodePath,

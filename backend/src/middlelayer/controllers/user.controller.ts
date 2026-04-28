@@ -72,13 +72,7 @@ export class UserController {
               phone: u.phone,
               createdAt: UserController.formatDate(u.createdAt),
               designation: 'N/A',
-              reportingManager: 'N/A',
-              initiatorName: null,
-              initiatorEmail: null,
-              initiatedDate: null,
-              approverName: null,
-              approverEmail: null,
-              approvedDate: null,
+              reportingManager: 'N/A'
             },
             primary: primaryRoles,
             secondary: secondaryRoles,
@@ -118,19 +112,13 @@ export class UserController {
                 phone: u.phone,
                 createdAt: UserController.formatDate(m.createdAt),
                 designation: m.designation,
-                reportingManager: m.manager?.email || 'N/A',
-                initiatorName: null,
-                initiatorEmail: null,
-                initiatedDate: null,
-                approverName: null,
-                approverEmail: null,
-                approvedDate: null,
+                reportingManager: m.manager?.email || 'N/A'
               },
               primary: primaryRoles,
               secondary: secondaryRoles,
             };
 
-            if (m.status === 'active') {
+            if (m.status === 'ACTIVE') {
               result.activeUsers.push(userData);
             } else {
               result.inactiveUsers.push(userData);
@@ -177,10 +165,7 @@ export class UserController {
             reportingManager: basic.reportingManager || 'N/A',
             initiatorName: onb.initiator?.name || null,
             initiatorEmail: onb.initiator?.email || null,
-            initiatedDate: UserController.formatDate(onb.createdAt),
-            approverName: onb.approver?.name || null,
-            approverEmail: onb.approver?.email || null,
-            approvedDate: onb.approvedAt ? UserController.formatDate(onb.approvedAt) : null,
+            initiatedDate:onb.createdAt
           },
           primary,
           secondary,
@@ -379,8 +364,8 @@ export class UserController {
 
       // 2. Determine target status (Toggle)
       // If any mapping is active, set to inactive. Otherwise set to active.
-      const hasActive = user.userMappings.some((m: any) => m.status === 'active');
-      const targetStatus = hasActive ? 'inactive' : 'active';
+      const hasActive = user.userMappings.some((m: any) => m.status === 'ACTIVE');
+      const targetStatus = hasActive ? 'INACTIVE' : 'ACTIVE';
 
       // 3. Update status in Backend
       const { ok: updateOk } = await internalPost(

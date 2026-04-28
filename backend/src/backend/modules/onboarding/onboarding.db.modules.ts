@@ -80,6 +80,20 @@ export class OnboardingDbController {
             eventUserId: initiatorId,
           },
         });
+
+        // Add history for each signatory
+        const signatories = (onboardingData.data as any)?.signatories || [];
+        for (const sig of signatories) {
+          if (sig.email) {
+            await tx.userHistory.create({
+              data: {
+                email: sig.email,
+                event: 'INITIATE',
+                eventUserId: initiatorId,
+              },
+            });
+          }
+        }
       }
       return onb;
     });
@@ -175,6 +189,20 @@ export class OnboardingDbController {
                 eventUserId: approverId,
               },
             });
+
+            // Add history for each signatory
+            const signatories = (onboarding.data as any)?.signatories || [];
+            for (const sig of signatories) {
+              if (sig.email) {
+                await tx.userHistory.create({
+                  data: {
+                    email: sig.email,
+                    event: 'REJECT',
+                    eventUserId: approverId,
+                  },
+                });
+              }
+            }
           }
 
           return { message: 'Onboarding rejected successfully' };
@@ -200,7 +228,7 @@ export class OnboardingDbController {
               data: {
                 name: group.name,
                 groupCode: onboarding.groupCode,
-                status: 'active',
+                status: 'ACTIVE',
                 remarks: group.remarks || '',
               },
             });
@@ -210,20 +238,32 @@ export class OnboardingDbController {
         }
 
         // 3. Create company
-        const newCompany = await tx.company.create({
-          data: {
-            legalName: company.name,
-            gstNumber: company.gst,
-            address: company.address,
-            brandName: company.brand,
-            iecode: company.ieCode,
-            companyCode: onboarding.companyCode as string,
-            registrationDate: company.registeredAt
-              ? new Date(company.registeredAt)
-              : new Date(),
-            status: 'active',
-          },
-        });
+        let newCompany;
+        try {
+          newCompany = await tx.company.create({
+            data: {
+              legalName: company.name,
+              gstNumber: company.gst,
+              address: company.address,
+              brandName: company.brand,
+              iecode: company.ieCode,
+              companyCode: onboarding.companyCode as string,
+              registrationDate: company.registeredAt
+                ? new Date(company.registeredAt)
+                : new Date(),
+              status: 'ACTIVE',
+            },
+          });
+        } catch (error: any) {
+          if (error.code === 'P2002') {
+            const field = error.meta?.target?.[0] || 'unique field';
+            throw new AppError(
+              `A company with this ${field} already exists.`,
+              400,
+            );
+          }
+          throw error;
+        }
 
         // 4. Map company to group
         if (groupId) {
@@ -273,7 +313,7 @@ export class OnboardingDbController {
             data: {
               userId: user.id,
               companyId: newCompany.id,
-              status: 'active',
+              status: 'ACTIVE',
               designation: sig.designation,
               employeeId: sig.employeeId || '',
             },
@@ -287,6 +327,15 @@ export class OnboardingDbController {
               accessType: null,
               companyId: newCompany.id,
               isGlobalAccess: true,
+            },
+          });
+
+          // 6.2 Add User History for signatory approval
+          await tx.userHistory.create({
+            data: {
+              email: sig.email,
+              event: 'APPROVE',
+              eventUserId: approverId,
             },
           });
         }
@@ -398,7 +447,7 @@ export class OnboardingDbController {
               userId: user.id,
               companyId: company.id,
               reportingManager: manager.id,
-              status: 'active',
+              status: 'ACTIVE',
               designation,
               employeeId,
             },

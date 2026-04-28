@@ -299,7 +299,7 @@ async function main() {
 
   // 3. Seed Initial Group and Company
   const group = await prisma.groupCompany.upsert({
-    where: { groupCode: 'TEST_GROUP' },
+    where: { groupCode: 'TESTGROUP28042026' },
     update: {},
     create: {
       name: 'TEST Tech Group',
@@ -350,21 +350,26 @@ async function main() {
 
   // 5. Map Super Admin to Company and give Global Access
   await prisma.userMapping.create({
+    data: {
       userId: superAdmin.id,
       companyId: company.id,
       status: 'ACTIVE',
       designation: 'CTO',
-      employeeId: 'EMP001'
+      employeeId: 'EMP001',
+    },
   });
 
   await prisma.userAccess.create({
+    data: {
       userId: superAdmin.id,
       roleCode: null,
       nodeId: rootNode.id,
-      accessType:null,
+      accessType: null,
       companyId: company.id,
       isGlobalAccess: true,
+    },
   });
+  
   console.log('Super Admin mapping and global access configured.');
 
 }

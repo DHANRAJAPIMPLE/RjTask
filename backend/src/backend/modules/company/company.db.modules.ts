@@ -79,7 +79,7 @@ export class CompanyDbController {
       // 3. Fetch pending onboarding records
       const pendingOnboardings = await prisma.companyOnboarding.findMany({
         where: { status: 'pending' },
-        // Relations were removed
+  
       });
 
       // 4. Fetch history for active and pending records to get initiator/approver

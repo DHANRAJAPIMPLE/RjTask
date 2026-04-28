@@ -11,39 +11,6 @@ import {
 import { CodeGenUtil } from '../utils/code-gen.util';
 
 export class CompanyController {
-  static async getMyCompanies(
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction,
-  ) {
-    try {
-      const userId = req.user?.id;
-
-      // Fetch raw mappings from Backend
-      const {
-        data: mappings,
-        ok,
-        status,
-      } = await internalPost<any[]>(
-        `${config.backendCompanyUrl}/my-companies`,
-        { userId },
-      );
-
-      if (!ok) {
-        throw new AppError('Failed to fetch companies', status);
-      }
-
-      // Logic: Shape data for frontend
-      const companies = mappings.map((m) => ({
-        companyCode: m.company.companyCode,
-        brandName: m.company.brandName,
-      }));
-
-      res.status(200).json(companies);
-    } catch (error) {
-      next(error);
-    }
-  }
 
   static async initiateCompanyOnboarding(
     req: Request & { user?: { id: string } },
@@ -97,7 +64,6 @@ export class CompanyController {
      
      
     let databaseEmailExists : String = "";
-      // check email already exist 
       for(const signatory of signatories) {
         const existingUserRes = await internalPost<any>(
       `${config.backendAuthUrl}/get-user`,
@@ -191,21 +157,19 @@ export class CompanyController {
       // 4. Handle rejection
 
        const {data: updateStatusRes, ok: updateStatusOk, status: updateStatusStatus}  = await internalPost(
-          `${config.backendUrl}/internal/onboarding/company/update-status`,
+          `${config.backendUrl}/internal/onboarding/company/action`,
           {  id,
             action,
             approverId,
-              remark
+            remark
 
           },
         );
-        
-
-     
 
       if (!updateStatusOk) {
+        console.log(updateStatusRes,updateStatusOk,updateStatusStatus)
         throw new AppError(
-          updateStatusRes.error || 'Failed to process onboarding approval',
+          updateStatusRes.message || updateStatusRes.error || 'Failed to process onboarding approval',
           updateStatusStatus,
         );
       }
