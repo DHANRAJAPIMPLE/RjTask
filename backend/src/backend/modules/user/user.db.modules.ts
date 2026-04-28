@@ -41,19 +41,45 @@ export class UserDbController {
       // Logic: Fetch raw pending user onboardings
       const pendingOnboardings = await prisma.userOnboarding.findMany({
         where: { status: 'pending' },
-        include: {
-          initiator: {
-            select: { name: true, email: true },
-          },
-          approver: {
-            select: { name: true, email: true },
-          },
+        // Relation fields were removed
+      });
+
+      // Fetch history for these pending onboardings to get initiator/approver
+      const pendingEmails = pendingOnboardings.map((onb: any) => (onb.data as any)?.basicDetails?.email).filter(Boolean);
+      
+      const histories = await prisma.userHistory.findMany({
+        where: {
+          email: { in: pendingEmails },
         },
+        include: {
+          user: { select: { name: true, email: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Map history info for easy lookup
+      const historyMap = new Map();
+      histories.forEach((h) => {
+        const key = `${h.email}_${h.event}`;
+        if (!historyMap.has(key)) {
+          historyMap.set(key, h);
+        }
+      });
+
+      const enhancedPending = pendingOnboardings.map((onb: any) => {
+        const email = (onb.data as any)?.basicDetails?.email;
+        const init = historyMap.get(`${email}_INITIATE`);
+        const approve = historyMap.get(`${email}_APPROVE`);
+        return {
+          ...onb,
+          initiator: init?.user || null,
+          approver: approve?.user || null,
+        };
       });
 
       res.status(200).json({
         users,
-        pendingOnboardings,
+        pendingOnboardings: enhancedPending,
       });
     } catch (error) {
       next(error);

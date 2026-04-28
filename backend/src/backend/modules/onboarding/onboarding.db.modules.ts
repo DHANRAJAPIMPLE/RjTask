@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../lib/prisma';
 import { HashUtil } from '../../../shared/utils/hash.util';
 import { AccessUtil } from '../../utils/access.util';
+import { AppError } from '../../middlewares/error.middleware';
 
 function toTitleCase(str: string): string {
   return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
@@ -64,15 +65,45 @@ export class OnboardingDbController {
   // --- Create Operations ---
 
   static async createCompanyOnboarding(req: Request, res: Response) {
-    const onboarding = await prisma.companyOnboarding.create({
-      data: req.body,
+    const { initiatorId, ...onboardingData } = req.body;
+    const companyCode = onboardingData.companyCode;
+
+    const onboarding = await prisma.$transaction(async (tx) => {
+      const onb = await tx.companyOnboarding.create({
+        data: onboardingData,
+      });
+      if (initiatorId && companyCode) {
+        await tx.companyHistory.create({
+          data: {
+            companyCode,
+            event: 'INITIATE',
+            eventUserId: initiatorId,
+          },
+        });
+      }
+      return onb;
     });
     res.status(201).json(onboarding);
   }
 
   static async createUserOnboarding(req: Request, res: Response) {
-    const onboarding = await prisma.userOnboarding.create({
-      data: req.body,
+    const { initiatorId, ...onboardingData } = req.body;
+    const email = onboardingData.data?.basicDetails?.email;
+
+    const onboarding = await prisma.$transaction(async (tx) => {
+      const onb = await tx.userOnboarding.create({
+        data: onboardingData,
+      });
+      if (initiatorId && email) {
+        await tx.userHistory.create({
+          data: {
+            email,
+            event: 'INITIATE',
+            eventUserId: initiatorId,
+          },
+        });
+      }
+      return onb;
     });
     res.status(201).json(onboarding);
   }
@@ -95,66 +126,90 @@ export class OnboardingDbController {
     res.json(onboarding);
   }
 
-  // --- Status Update Operations ---
-
-  static async updateCompanyOnboardingStatus(req: Request, res: Response) {
-    const { id, data } = req.body;
-    const updated = await prisma.companyOnboarding.update({
-      where: { id },
-      data,
-    });
-    res.json(updated);
-  }
-
-  static async updateUserOnboardingStatus(req: Request, res: Response) {
-    const { id, data } = req.body;
-    const updated = await prisma.userOnboarding.update({
-      where: { id },
-      data,
-    });
-    res.json(updated);
-  }
-
-  // --- Transactional Commit Operations (Keep as atomic transactions) ---
-
-  static async approveCompanyOnboarding(
+  static async handleCompanyOnboardingStatus(
     req: Request,
     res: Response,
     next: NextFunction,
   ) {
     try {
-      const { id, approverId, remark } = req.body;
+      const { id, action, approverId, remark } = req.body;
+      const result = await prisma.$transaction(async (tx) => {
+        // 1. Fetch onboarding
+        const onboarding = await tx.companyOnboarding.findUnique({
+          where: { id },
+        });
 
-      const onboarding = await prisma.companyOnboarding.findUnique({
-        where: { id },
-      });
+        if (!onboarding) {
+          throw new AppError('Onboarding request not found', 404);
+        }
 
-      if (!onboarding) throw new Error('Onboarding request not found');
+        if (onboarding.status !== 'pending') {
+          throw new AppError('Onboarding request already processed', 400);
+        }
 
-      const data = onboarding.data as any;
-      const { group, company, signatories } = data;
-      const groupCode = onboarding.groupCode;
+        // Optional: permission check (if stored)
+        if (
+          onboarding.accessibleBy &&
+          !onboarding.accessibleBy.includes(approverId)
+        ) {
+          throw new AppError('Unauthorized to process this request', 403);
+        }
 
-      await prisma.$transaction(async (tx) => {
+        // =========================
+        // 🔴 REJECT FLOW
+        // =========================
+        if (action === 'rejected') {
+          await tx.companyOnboarding.update({
+            where: { id },
+            data: {
+              status: 'rejected',
+              approvalRemark: remark,
+            },
+          });
+
+          if (onboarding.companyCode) {
+            await tx.companyHistory.create({
+              data: {
+                companyCode: onboarding.companyCode,
+                event: 'REJECT',
+                eventUserId: approverId,
+              },
+            });
+          }
+
+          return { message: 'Onboarding rejected successfully' };
+        }
+
+        // =========================
+        // 🟢 APPROVE FLOW
+        // =========================
+
+        const data = onboarding.data as any;
+        const { group, company, signatories } = data;
+
         let groupId = '';
 
-        if (groupCode) {
+        // 2. Create or fetch group
+        if (onboarding.groupCode) {
           let groupObj = await tx.groupCompany.findUnique({
-            where: { groupCode },
+            where: { groupCode: onboarding.groupCode },
           });
+
           if (!groupObj && group) {
             groupObj = await tx.groupCompany.create({
               data: {
                 name: group.name,
-                groupCode: groupCode,
+                groupCode: onboarding.groupCode,
                 status: 'active',
                 remarks: group.remarks || '',
               },
             });
           }
+
           if (groupObj) groupId = groupObj.id;
         }
 
+        // 3. Create company
         const newCompany = await tx.company.create({
           data: {
             legalName: company.name,
@@ -170,33 +225,40 @@ export class OnboardingDbController {
           },
         });
 
+        // 4. Map company to group
         if (groupId) {
           await tx.companyMapping.create({
             data: {
               companyId: newCompany.id,
-              groupId: groupId,
+              groupId,
             },
           });
         }
 
+        // 5. Create root org node
         const nodePath = (onboarding.companyCode as string)
           .replace(/[^a-zA-Z0-9]/g, '')
           .toUpperCase();
+
         const rootNode = await tx.orgStructure.create({
           data: {
             companyId: newCompany.id,
-            nodePath: nodePath,
+            nodePath,
             nodeName: company.name,
             nodeType: 'ROOT',
             parentId: null,
           },
         });
 
+        // 6. Handle signatories
         for (const sig of signatories) {
-          let user = await tx.user.findUnique({ where: { email: sig.email } });
+          let user = await tx.user.findUnique({
+            where: { email: sig.email },
+          });
 
           if (!user) {
             const defaultPassword = await HashUtil.hash('Welcome@123');
+
             user = await tx.user.create({
               data: {
                 email: sig.email,
@@ -229,125 +291,201 @@ export class OnboardingDbController {
           });
         }
 
+        // 7. Update onboarding status
         await tx.companyOnboarding.update({
           where: { id },
           data: {
             status: 'approved',
-            approverId,
-            approvedAt: new Date(),
             approvalRemark: remark,
           },
         });
+
+        // 8. History
+        if (onboarding.companyCode) {
+          await tx.companyHistory.create({
+            data: {
+              companyCode: onboarding.companyCode,
+              event: 'APPROVE',
+              eventUserId: approverId,
+            },
+          });
+        }
+
+        return {
+          message: 'Onboarding approved and company created successfully',
+          companyId: newCompany.id,
+        };
       });
 
-      res.status(200).json({ message: 'Onboarding approved' });
+      res.status(200).json(result);
     } catch (error) {
       next(error);
     }
   }
 
-  static async approveUserOnboarding(
+  static async handleUserOnboardingStatus(
     req: Request,
     res: Response,
     next: NextFunction,
   ) {
     try {
-      const { id, approverId, remark } = req.body;
+      const { id, status, approverId, remark } = req.body;
 
       const onboarding = await prisma.userOnboarding.findUnique({
         where: { id },
       });
 
-      if (!onboarding) throw new Error('User onboarding request not found');
+      if (!onboarding) {
+        throw new AppError('User onboarding request not found', 404);
+      }
 
       const data = onboarding.data as any;
-      const { basicDetails, permissions } = data;
-      const { name, email, phone, reportingManager, designation, employeeId } =
-        basicDetails;
+      const { basicDetails, permissions } = data || {};
+      const {
+        name,
+        email,
+        phone,
+        reportingManager,
+        designation,
+        employeeId,
+      } = basicDetails || {};
 
       await prisma.$transaction(async (tx) => {
-        const manager = await tx.user.findUnique({
-          where: { email: reportingManager },
-          include: {
-            userMappings: {
-              include: { company: true },
-            },
-          },
-        });
-        if (!manager) throw new Error('Manager not found');
-
-        let company;
-        if (onboarding.companyCode) {
-          company = await tx.company.findUnique({
-            where: { companyCode: onboarding.companyCode },
-          });
-        }
-
-        if (!company && manager.userMappings[0]) {
-          company = manager.userMappings[0].company;
-        }
-
-        if (!company) throw new Error('Company not found');
-
-        let user = await tx.user.findUnique({ where: { email } });
-        if (!user) {
-          const defaultPassword = await HashUtil.hash('Welcome@123');
-          user = await tx.user.create({
-            data: {
-              email,
-              name,
-              phone,
-              password: defaultPassword,
+        // =========================
+        // ✅ APPROVED FLOW
+        // =========================
+        if (status === 'approve') {
+          const manager = await tx.user.findUnique({
+            where: { email: reportingManager },
+            include: {
+              userMappings: {
+                include: { company: true },
+              },
             },
           });
-        }
 
-        await tx.userMapping.create({
-          data: {
-            userId: user.id,
-            companyId: company.id,
-            reportingManager: manager.id,
-            status: 'active',
-            designation: designation,
-            employeeId: employeeId,
-          },
-        });
+          if (!manager) throw new AppError('Manager not found', 404);
 
-        if (Array.isArray(permissions)) {
-          for (const perm of permissions) {
-            const { accessType, roleName, nodePath } = perm;
-            const role = await tx.roles.findUnique({ where: { roleName } });
-            const node = await tx.orgStructure.findUnique({
-              where: { nodePath },
+          let company;
+          if (onboarding.companyCode) {
+            company = await tx.company.findUnique({
+              where: { companyCode: onboarding.companyCode },
             });
+          }
 
-            if (role && node) {
-              await tx.userAccess.create({
-                data: {
-                  userId: user.id,
-                  roleCode: role.roleCode,
-                  nodeId: node.id,
-                  accessType,
-                  companyId: company.id,
-                  isGlobalAccess: false,
-                },
+          if (!company && manager.userMappings[0]) {
+            company = manager.userMappings[0].company;
+          }
+
+          if (!company) throw new AppError('Company not found', 404);
+
+          let user = await tx.user.findUnique({ where: { email } });
+
+          if (!user) {
+            const defaultPassword = await HashUtil.hash('Welcome@123');
+            user = await tx.user.create({
+              data: {
+                email,
+                name,
+                phone,
+                password: defaultPassword,
+              },
+            });
+          }
+
+          await tx.userMapping.create({
+            data: {
+              userId: user.id,
+              companyId: company.id,
+              reportingManager: manager.id,
+              status: 'active',
+              designation,
+              employeeId,
+            },
+          });
+
+          if (Array.isArray(permissions)) {
+            for (const perm of permissions) {
+              const { accessType, roleName, nodePath } = perm;
+
+              const role = await tx.roles.findUnique({
+                where: { roleName },
               });
+
+              const node = await tx.orgStructure.findUnique({
+                where: { nodePath },
+              });
+
+              if (role && node) {
+                await tx.userAccess.create({
+                  data: {
+                    userId: user.id,
+                    roleCode: role.roleCode,
+                    nodeId: node.id,
+                    accessType,
+                    companyId: company.id,
+                    isGlobalAccess: false,
+                  },
+                });
+              }
             }
+          }
+
+          await tx.userOnboarding.update({
+            where: { id },
+            data: {
+              status: 'approved',
+              approvalRemark: remark,
+            },
+          });
+
+          if (email && approverId) {
+            await tx.userHistory.create({
+              data: {
+                email,
+                event: 'APPROVE',
+                eventUserId: approverId,
+              },
+            });
           }
         }
 
-        await tx.userOnboarding.update({
-          where: { id },
-          data: {
-            status: 'approved',
-            approverId,
-            approvedAt: new Date(),
-            approvalRemark: remark,
-          },
-        });
+        // =========================
+        // ❌ REJECTED FLOW
+        // =========================
+        else if (status === 'reject') {
+          const updated = await tx.userOnboarding.update({
+            where: { id },
+            data: {
+              status: 'rejected',
+              approvalRemark: remark,
+            },
+          });
+
+          const userEmail = (updated.data as any)?.basicDetails?.email;
+
+          if (approverId && userEmail) {
+            await tx.userHistory.create({
+              data: {
+                email: userEmail,
+                event: 'REJECT',
+                eventUserId: approverId,
+              },
+            });
+          }
+        }
+
+        // =========================
+        // ⚠️ INVALID STATUS
+        // =========================
+        else {
+          throw new AppError('Invalid status', 400);
+        }
       });
 
-      res.status(200).json({ message: 'User onboarded' });
+      res.status(200).json({
+        message: `User onboarding ${status}d successfully`,
+      });
     } catch (error) {
       next(error);
     }

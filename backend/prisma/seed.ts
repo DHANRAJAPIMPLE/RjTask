@@ -299,28 +299,28 @@ async function main() {
 
   // 3. Seed Initial Group and Company
   const group = await prisma.groupCompany.upsert({
-    where: { groupCode: 'GLOBAL_GROUP' },
+    where: { groupCode: 'TEST_GROUP' },
     update: {},
     create: {
-      name: 'Global Tech Group',
-      groupCode: 'GLOBAL_GROUP',
-      status: 'active',
+      name: 'TEST Tech Group',
+      groupCode: 'TESTGROUP28042026',
+      status: 'ACTIVE',
       remarks: 'Primary seeding group',
     },
   });
 
   const company = await prisma.company.upsert({
-    where: { companyCode: 'GTSOL001' },
+    where: { companyCode: 'TEST28042026' },
     update: {},
     create: {
-      legalName: 'Global Tech Solutions Pvt Ltd',
+      legalName: 'TEST Tech Solutions Pvt Ltd',
       gstNumber: '27AAAAA0000A1Z5',
       address: '123 Tech Park, Mumbai, Maharashtra',
-      brandName: 'GlobalTech',
+      brandName: 'TEST Tech',
       iecode: '0123456789',
-      companyCode: 'GTSOL001',
+      companyCode: 'TEST28042026',
       registrationDate: new Date('2023-01-01'),
-      status: 'active',
+      status: 'ACTIVE',
     },
   });
 
@@ -337,49 +337,36 @@ async function main() {
 
   // 4. Create Root Org Structure Node
   const rootNode = await prisma.orgStructure.upsert({
-    where: { nodePath: 'GTSOL001' },
+    where: { nodePath: 'TEST28042026' },
     update: {},
     create: {
       companyId: company.id,
-      nodePath: 'GTSOL001',
-      nodeName: 'Global Tech Solutions',
+      nodePath: 'TEST28042026',
+      nodeName: 'TEST Tech Solutions Pvt Ltd',
       nodeType: 'ROOT',
     },
   });
   console.log('Root Org Structure node created.');
 
   // 5. Map Super Admin to Company and give Global Access
-  await prisma.userMapping.upsert({
-    where: { id: 'admin-mapping' },
-    update: {
-      status: 'active',
-    },
-    create: {
-      id: 'admin-mapping',
+  await prisma.userMapping.create({
       userId: superAdmin.id,
       companyId: company.id,
-      status: 'active',
+      status: 'ACTIVE',
       designation: 'CTO',
-      employeeId: 'EMP001',
-    },
+      employeeId: 'EMP001'
   });
 
-  await prisma.userAccess.upsert({
-    where: { id: 'admin-access' },
-    update: {},
-    create: {
-      id: 'admin-access',
+  await prisma.userAccess.create({
       userId: superAdmin.id,
-      roleCode: 'ACCOUNTS_VIEWER',
+      roleCode: null,
       nodeId: rootNode.id,
-      accessType: 'PRIMARY',
+      accessType:null,
       companyId: company.id,
       isGlobalAccess: true,
-    },
   });
   console.log('Super Admin mapping and global access configured.');
 
-  console.log('Seeding completed successfully!');
 }
 
 main()

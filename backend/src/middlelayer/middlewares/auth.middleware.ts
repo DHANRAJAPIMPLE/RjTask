@@ -59,7 +59,7 @@ export const authMiddleware = async (
     if (userId) {
       // If we have a userId (from valid or expired token), fetch by ID
       const response = await internalPost<any>(
-        `${config.backendAuthUrl}/activity/get`,
+        `${config.backendAuthUrl}/get-user-activity`,
         { userId },
       );
       activity = response.data;
@@ -68,7 +68,7 @@ export const authMiddleware = async (
       // If no access token but we have a refresh token, fetch by token hash
       const refreshTokenHash = HashUtil.hashToken(refreshToken);
       const response = await internalPost<any>(
-        `${config.backendAuthUrl}/activity/get-by-token`,
+        `${config.backendAuthUrl}/get-user-activity`,
         { refreshTokenHash },
       );
       activity = response.data;

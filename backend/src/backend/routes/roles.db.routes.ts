@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { RolesDbController } from '../modules/roles/roles.db.modules.ts';
+import { RolesDbController } from '../modules/roles/roles.db.modules';
 
 const router = Router();
 

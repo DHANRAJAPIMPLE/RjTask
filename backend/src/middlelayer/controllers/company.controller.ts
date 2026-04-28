@@ -100,7 +100,7 @@ export class CompanyController {
       // check email already exist 
       for(const signatory of signatories) {
         const existingUserRes = await internalPost<any>(
-      `${config.backendAuthUrl}/get-by-email`,
+      `${config.backendAuthUrl}/get-user`,
       { email: signatory.email },
     );
       if (existingUserRes.ok) {
@@ -189,36 +189,24 @@ export class CompanyController {
       }
 
       // 4. Handle rejection
-      if (action === 'reject') {
-        await internalPost(
+
+       const {data: updateStatusRes, ok: updateStatusOk, status: updateStatusStatus}  = await internalPost(
           `${config.backendUrl}/internal/onboarding/company/update-status`,
-          {
-            id,
-            data: {
-              status: 'rejected',
-              approverId,
-              approvedAt: new Date(),
-              approvalRemark: remark,
-            },
+          {  id,
+            action,
+            approverId,
+              remark
+
           },
         );
-        return res.status(200).json({ message: 'Onboarding request rejected' });
-      }
+        
 
-      // 5. Handle approval (Commit to Backend Transaction)
-      const {
-        data: commitRes,
-        ok: commitOk,
-        status: commitStatus,
-      } = await internalPost(
-        `${config.backendUrl}/internal/onboarding/company/approve-commit`,
-        { id, approverId, remark },
-      );
+     
 
-      if (!commitOk) {
+      if (!updateStatusOk) {
         throw new AppError(
-          commitRes.error || 'Failed to process onboarding approval',
-          commitStatus,
+          updateStatusRes.error || 'Failed to process onboarding approval',
+          updateStatusStatus,
         );
       }
 

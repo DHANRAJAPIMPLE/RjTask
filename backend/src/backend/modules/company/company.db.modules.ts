@@ -79,20 +79,95 @@ export class CompanyDbController {
       // 3. Fetch pending onboarding records
       const pendingOnboardings = await prisma.companyOnboarding.findMany({
         where: { status: 'pending' },
-        include: {
-          initiator: {
-            select: { name: true, email: true },
-          },
-          approver: {
-            select: { name: true, email: true },
-          },
+        // Relations were removed
+      });
+
+      // 4. Fetch history for active and pending records to get initiator/approver
+      const allActiveCompanyCodes = [
+        ...groups.flatMap((g: any) => g.companyMappings.map((cm: any) => cm.company.companyCode)),
+        ...soloCompanies.map((c: any) => c.companyCode),
+      ];
+      const allGroupCodes = groups.map((g: any) => g.groupCode);
+      const allPendingCodes = pendingOnboardings.map(onb => onb.companyCode);
+
+      const allCodes = [...new Set([...allActiveCompanyCodes, ...allGroupCodes, ...allPendingCodes])];
+
+      const histories = await prisma.companyHistory.findMany({
+        where: {
+          companyCode: { in: allCodes },
         },
+        include: {
+          user: { select: { name: true, email: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Map history info for easy lookup
+      // Key: companyCode_event, Value: user details
+      const historyMap = new Map();
+      histories.forEach((h) => {
+        const key = `${h.companyCode}_${h.event}`;
+        if (!historyMap.has(key)) {
+          historyMap.set(key, {
+            user: h.user,
+            createdAt: h.createdAt,
+          });
+        }
+      });
+
+      // 5. Attach history info to groups and companies
+      const enhancedGroups = groups.map((g: any) => {
+        const initiateHistory = historyMap.get(`${g.groupCode}_INITIATE`);
+        const approveHistory = historyMap.get(`${g.groupCode}_APPROVE`);
+        
+        return {
+          ...g,
+          initiator: initiateHistory?.user || null,
+          approver: approveHistory?.user || null,
+          approvedAt: approveHistory?.createdAt || null,
+          createdAt: initiateHistory?.createdAt || g.createdAt,
+          companyMappings: g.companyMappings.map((cm: any) => {
+            const compInit = historyMap.get(`${cm.company.companyCode}_INITIATE`);
+            const compApprove = historyMap.get(`${cm.company.companyCode}_APPROVE`);
+            return {
+              ...cm,
+              company: {
+                ...cm.company,
+                initiator: compInit?.user || initiateHistory?.user || null,
+                approver: compApprove?.user || approveHistory?.user || null,
+                approvedAt: compApprove?.createdAt || approveHistory?.createdAt || null,
+                createdAt: compInit?.createdAt || initiateHistory?.createdAt || cm.company.createdAt,
+              },
+            };
+          }),
+        };
+      });
+
+      const enhancedSoloCompanies = soloCompanies.map((c: any) => {
+        const compInit = historyMap.get(`${c.companyCode}_INITIATE`);
+        const compApprove = historyMap.get(`${c.companyCode}_APPROVE`);
+        return {
+          ...c,
+          initiator: compInit?.user || null,
+          approver: compApprove?.user || null,
+          approvedAt: compApprove?.createdAt || null,
+          createdAt: compInit?.createdAt || c.createdAt,
+        };
+      });
+
+      // Also enhance pendingOnboardings if needed
+      const enhancedPending = pendingOnboardings.map((onb: any) => {
+        const init = historyMap.get(`${onb.companyCode}_INITIATE`);
+        return {
+          ...onb,
+          initiator: init?.user || null,
+        };
       });
 
       res.status(200).json({
-        groups,
-        soloCompanies,
-        pendingOnboardings,
+        groups: enhancedGroups,
+        soloCompanies: enhancedSoloCompanies,
+        pendingOnboardings: enhancedPending,
       });
     } catch (error) {
       next(error);

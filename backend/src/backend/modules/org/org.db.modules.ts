@@ -21,63 +21,116 @@ export class OrgStructureDbController {
     res.json(node);
   }
 
-  static async updateOrgRequestStatus(req: Request, res: Response) {
-    const { id, data } = req.body;
-    const updated = await prisma.orgStructureReq.update({
-      where: { id },
-      data,
-    });
-    res.json(updated);
-  }
+
 
   // --- Transactional Commit Operations ---
 
-  static async approveOrgRequestCommit(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ) {
-    try {
-      const {
-        id,
-        approverId,
-        remarks,
-        newNodePath,
-        newNodeName,
-        nodeType,
-        parentId,
-      } = req.body;
+static async updateOrgRequestStatus(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const {
+      id,
+      status, // 'approved' | 'rejected'
+      approverId,
+      remarks,
+      newNodePath,
+      newNodeName,
+      nodeType,
+      parentId,
+    } = req.body;
 
-      await prisma.$transaction([
-        prisma.orgStructure.create({
+    if (!id || !status) {
+      throw new Error('id and status are required');
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const request = await tx.orgStructureReq.findUnique({
+        where: { id },
+        include: { company: true },
+      });
+
+      if (!request) throw new Error('Request not found');
+
+      // ✅ REJECT FLOW
+      if (status === 'rejected') {
+        const updated = await tx.orgStructureReq.update({
+          where: { id },
           data: {
-            companyId: (
-              await prisma.orgStructureReq.findUnique({ where: { id } })
-            )?.companyId as string,
+            status: 'rejected',
+            remarks,
+          },
+        });
+
+        if (approverId) {
+          await tx.orgHistory.create({
+            data: {
+              companyCode: request.company.companyCode,
+              event: 'REJECT',
+              eventUserId: approverId,
+            },
+          });
+        }
+
+        return updated;
+      }
+
+      // ✅ APPROVE FLOW
+      if (status === 'approved') {
+        // validate required fields for approval
+        if (!newNodePath || !newNodeName || !nodeType) {
+          throw new Error('Missing node details for approval');
+        }
+
+        // create org node
+        await tx.orgStructure.create({
+          data: {
+            companyId: request.companyId,
             nodePath: newNodePath,
             nodeName: newNodeName,
             nodeType: nodeType,
-            parentId: parentId,
+            parentId: parentId || null,
           },
-        }),
-        prisma.orgStructureReq.update({
+        });
+
+        // update request
+        const updated = await tx.orgStructureReq.update({
           where: { id },
           data: {
             status: 'approved',
-            approverId,
-            approvedAt: new Date(),
             remarks,
           },
-        }),
-      ]);
+        });
 
-      res
-        .status(200)
-        .json({ success: true, message: 'Org structure approved' });
-    } catch (error) {
-      next(error);
-    }
+        // history
+        await tx.orgHistory.create({
+          data: {
+            companyCode: request.company.companyCode,
+            event: 'APPROVE',
+            eventUserId: approverId,
+          },
+        });
+
+        return updated;
+      }
+
+      throw new Error('Invalid status value');
+    });
+
+    res.status(200).json({
+      success: true,
+      message:
+        status === 'approved'
+          ? 'Org structure approved'
+          : 'Org structure rejected',
+      data: result,
+    });
+  } catch (error) {
+    next(error);
   }
+}
 
   static async initiateRequest(
     req: Request,
@@ -85,9 +138,24 @@ export class OrgStructureDbController {
     next: NextFunction,
   ) {
     try {
-      // Simplified: Just create the record
-      const request = await prisma.orgStructureReq.create({
-        data: req.body,
+      const { initiatorId, companyId, ...rest } = req.body;
+      const request = await prisma.$transaction(async (tx) => {
+        const reqRecord = await tx.orgStructureReq.create({
+          data: {
+            ...rest,
+            companyId: companyId,
+          },
+          include: { company: true },
+        });
+
+        await tx.orgHistory.create({
+          data: {
+            companyCode: reqRecord.company.companyCode,
+            event: 'INITIATE',
+            eventUserId: initiatorId,
+          },
+        });
+        return reqRecord;
       });
       res.status(201).json(request);
     } catch (error) {
@@ -121,12 +189,7 @@ export class OrgStructureDbController {
           status: 'pending',
         },
         include: {
-          initiator: {
-            select: { name: true, email: true },
-          },
-          approver: {
-            select: { name: true, email: true },
-          },
+          // No longer using initiator/approver relations as they were removed
         },
       });
 
@@ -135,6 +198,12 @@ export class OrgStructureDbController {
         nodeName: node.nodeName,
         nodeType: node.nodeType,
         nodePath: node.nodePath,
+        initiatorName: null,
+        initiatorEmail: null,
+        initiatedDate: null,
+        approverName: null,
+        approverEmail: null,
+        approvedDate: null,
       }));
 
       res.status(200).json({

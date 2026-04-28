@@ -17,122 +17,151 @@ enum NodeType {
   PLANT
   LOCATION
 }
+
+enum EventType {
+  INITIATE
+  APPROVE
+  REJECT
+  MODIFY
+}
+
 model User {
-  id         String   @id @default(uuid())
-  name       String
-  email      String   @unique
-  password   String
-  phone      String
-  createdAt  DateTime @default(now()) 
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
   userMappings                 UserMapping[]       @relation("UserMappings")
   managedUsers                 UserMapping[]       @relation("ReportingManager")
   userActivities               UserActivity[]
-  initiatedUserOnboardings    UserOnboarding[]    @relation("UserOnboardingInitiator")
-  approvedUserOnboardings     UserOnboarding[]    @relation("UserOnboardingApprover")
-  initiatedCompanyOnboardings CompanyOnboarding[] @relation("CompanyOnboardingInitiator")
-  approvedCompanyOnboardings  CompanyOnboarding[] @relation("CompanyOnboardingApprover")
-  initiatedOrgReqs            OrgStructureReq[]  @relation("OrgReqInitiator")
-  approvedOrgReqs             OrgStructureReq[]  @relation("OrgReqApprover")
   userAccesses                 UserAccess[]
 
-
+  // History Relations
+  userHistory    UserHistory[]    @relation("UserHistoryRel")
+  companyHistory CompanyHistory[] @relation("CompanyHistoryRel")
+  orgHistory     OrgHistory[]     @relation("OrgHistoryRel")
 }
 
 model Company {
-  id                 String   @id @default(uuid())
-  gstNumber         String   @unique
-  legalName         String  
-  address            String
-  status            Status
-  registrationDate  DateTime @default(now())
-  brandName         String   
-  iecode            String   @unique
-  companyCode       String   @unique
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt 
+  id               String   @id @default(uuid())
+  gstNumber        String   @unique
+  legalName        String
+  address          String
+  status           Status
+  registrationDate DateTime @default(now())
+  brandName        String
+  iecode           String   @unique
+  companyCode      String   @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   // Relations
-  userMappings      UserMapping[]
-  companyMappings   CompanyMapping[]
-  orgStructures     OrgStructure[]
+  userMappings     UserMapping[]
+  companyMappings  CompanyMapping[]
+  orgStructures    OrgStructure[]
   orgStructureReqs OrgStructureReq[]
-  userAccesses      UserAccess[]
-
-
+  userAccesses     UserAccess[]
 }
 
 model GroupCompany {
-  id         String   @id @default(uuid())
-  name       String
-  status     Status
-  groupCode  String   @unique
-  remarks    String? 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt 
+  id        String   @id @default(uuid())
+  name      String
+  status    Status
+  groupCode String   @unique
+  remarks   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   companyMappings CompanyMapping[]
-
 }
 
 enum Status {
-  active
-  inactive
+  ACTIVE
+  INACTIVE
+}
+
+model UserHistory {
+  id          String    @id @default(uuid())
+  email       String
+  event       EventType
+  eventUserId String
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  user User @relation("UserHistoryRel", fields: [eventUserId], references: [id])
+}
+
+model CompanyHistory {
+  id          String    @id @default(uuid())
+  companyCode String
+  event       EventType
+  eventUserId String
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  user User @relation("CompanyHistoryRel", fields: [eventUserId], references: [id])
+}
+
+model OrgHistory {
+  id          String    @id @default(uuid())
+  companyCode String
+  event       EventType
+  eventUserId String
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  user User @relation("OrgHistoryRel", fields: [eventUserId], references: [id])
 }
 
 model UserMapping {
-  id                String   @id @default(uuid())
-  userId            String  
-  companyId         String   
-  reportingManager  String?  
-  status            Status
-  designation       String
-  employeeId        String   
-  createdAt         DateTime @default(now()) 
-  updatedAt         DateTime @updatedAt 
+  id               String    @id @default(uuid())
+  userId           String
+  companyId        String
+  reportingManager String?
+  status           Status
+  designation      String
+  employeeId       String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   // FK Relations
-  user              User     @relation("UserMappings", fields: [userId], references: [id])
-  company           Company  @relation(fields: [companyId], references: [id])
-  manager           User?    @relation("ReportingManager", fields: [reportingManager], references: [id])
-
-
+  user      User    @relation("UserMappings", fields: [userId], references: [id])
+  company   Company @relation(fields: [companyId], references: [id])
+  manager   User?   @relation("ReportingManager", fields: [reportingManager], references: [id])
 }
 
 model CompanyMapping {
-  id           String   @id @default(uuid())
-  companyId   String   
-  groupId     String  
-  createdAt   DateTime @default(now()) 
-  updatedAt   DateTime @updatedAt 
+  id        String   @id @default(uuid())
+  companyId String
+  groupId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // FK Relations
-  company      Company       @relation(fields: [companyId], references: [id])
-  group        GroupCompany @relation(fields: [groupId], references: [id])
-
-
+  company Company      @relation(fields: [companyId], references: [id])
+  group   GroupCompany @relation(fields: [groupId], references: [id])
 }
 
 model UserActivity {
-  id              String    @id @default(uuid())
-  userId         String    
-  refreshToken   String?   
-  version         String?
-  ipAddress      String    
-  userAgent      String    
-  forceLogToken String?   
-  expiryAt       DateTime? 
-  
-  createdAt       DateTime  @default(now()) 
-  updatedAt      DateTime  @updatedAt 
+  id            String    @id @default(uuid())
+  userId        String
+  refreshToken  String?
+  version       String?
+  ipAddress     String
+  userAgent     String
+  forceLogToken String?
+  expiryAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // FK Relation
-  user          User      @relation(fields: [userId], references: [id])
-
-
+  user User @relation(fields: [userId], references: [id])
 }
 
 enum OnboardingStatus {
@@ -142,25 +171,18 @@ enum OnboardingStatus {
 }
 
 model UserOnboarding {
-  id           String           @id @default(uuid())
-  initiatorId String          
-  approverId  String?         
-  groupCode   String?          
-  companyCode String?         
-  data         Json?           
-  status       OnboardingStatus @default(pending)
-  approvedAt  DateTime?
-  createdAt    DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt 
-  approvalRemark String?       
-  accessibleBy  String[]         @default([])
-
-  // Relations
-  initiator User  @relation("UserOnboardingInitiator", fields: [initiatorId], references: [id])
-  approver  User? @relation("UserOnboardingApprover", fields: [approverId], references: [id])
-
+  id             String           @id @default(uuid())
+  groupCode      String?
+  companyCode    String
+  data           Json
+  status         OnboardingStatus @default(pending)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  approvalRemark String?
+  accessibleBy   String[]         @default([])
 
 }
+
 
 enum OnboardedType {
   existing
@@ -169,95 +191,79 @@ enum OnboardedType {
 
 model CompanyOnboarding {
   id             String           @id @default(uuid())
-  initiatorId   String           
-  approverId    String?         
   data           Json?
-  groupCode     String?          
-  companyCode   String           @unique 
-  onboardedType OnboardedType    @default(new) 
+  groupCode      String?
+  companyCode    String           @unique
+  onboardedType  OnboardedType    @default(new)
   status         OnboardingStatus @default(pending)
-  approvedAt    DateTime?
   createdAt      DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt 
-  approvalRemark String?         
+  updatedAt      DateTime         @updatedAt
+  approvalRemark String?
   accessibleBy   String[]         @default([])
 
-  // Relations
-  initiator User  @relation("CompanyOnboardingInitiator", fields: [initiatorId], references: [id])
-  approver  User? @relation("CompanyOnboardingApprover", fields: [approverId], references: [id])
 }
 
 model OrgStructureReq {
   id           String           @id @default(uuid())
-  initiatorId String           
-  approverId  String?         
   data         Json
-  companyId   String          
+  companyId    String
   status       OnboardingStatus @default(pending)
-  approvedAt  DateTime?      
-  createdAt    DateTime         @default(now()) 
+  createdAt    DateTime         @default(now())
   remarks      String?
-  updatedAt   DateTime         @updatedAt 
+  updatedAt    DateTime         @updatedAt
   accessibleBy String[]         @default([])
 
-  // Relations
-  initiator User     @relation("OrgReqInitiator", fields: [initiatorId], references: [id])
-  approver  User?    @relation("OrgReqApprover", fields: [approverId], references: [id])
-  company   Company  @relation(fields: [companyId], references: [id])
+  company   Company @relation(fields: [companyId], references: [id])
 }
 
 model OrgStructure {
-  id         String   @id @default(uuid())
-  companyId String  
-  nodePath   String   @unique 
-  nodeName   String   
-  nodeType   String   
-  parentId  String?  
-  createdAt  DateTime @default(now()) 
+  id        String   @id @default(uuid())
+  companyId String
+  nodePath  String   @unique
+  nodeName  String
+  nodeType  String
+  parentId  String?
+  createdAt DateTime @default(now())
 
   // Relations
   company    Company         @relation(fields: [companyId], references: [id])
   parent     OrgStructure?  @relation("ParentChild", fields: [parentId], references: [id])
   children   OrgStructure[] @relation("ParentChild")
   userAccess UserAccess[]
-
-
 }
 
 model Roles {
   roleCode        String   @id
-  roleName        String   @unique 
-  category         String
-  subCategory     String   
-  permissionLevel String?  
-  view             Boolean  @default(false)
-  modify           Boolean  @default(false)
-  approve          Boolean  @default(false)
-  initiate         Boolean  @default(false)
-  isActive         Boolean  @default(true) 
-  createdAt        DateTime @default(now()) 
-  updatedAt       DateTime @updatedAt 
+  roleName        String   @unique
+  category        String
+  subCategory     String
+  permissionLevel String?
+  view            Boolean  @default(false)
+  modify          Boolean  @default(false)
+  approve         Boolean  @default(false)
+  initiate        Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Relations
-  userAccess      UserAccess[]
-
+  userAccess UserAccess[]
 }
 
 model UserAccess {
-  id              String   @id @default(uuid())
-  userId         String   
-  roleCode       String?  
-  nodeId         String   
-  accessType     String?  
-  companyId      String   
-  isGlobalAccess  Boolean  @default(false) 
-  createdAt        DateTime @default(now()) 
-  updatedAt       DateTime @updatedAt 
+  id             String   @id @default(uuid())
+  userId         String
+  roleCode       String?
+  nodeId         String
+  accessType     String?
+  companyId      String
+  isGlobalAccess Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   // Relations
-  user          User          @relation(fields: [userId], references: [id])
-  role          Roles?         @relation(fields: [roleCode], references: [roleCode])
-
+  user         User         @relation(fields: [userId], references: [id])
+  role         Roles?       @relation(fields: [roleCode], references: [roleCode])
   orgStructure OrgStructure @relation(fields: [nodeId], references: [id])
-  company       Company       @relation(fields: [companyId], references: [id])
+  company      Company      @relation(fields: [companyId], references: [id])
 }

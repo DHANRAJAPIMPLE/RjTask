@@ -113,14 +113,11 @@ export class OrgController {
 
       // 3. Handle Rejection
       if (action === 'reject') {
-        await internalPost(`${config.backendUrl}/internal/org/update-status`, {
+        await internalPost(`${config.backendUrl}/internal/org/action`, {
           id,
-          data: {
-            status: 'rejected',
-            approverId,
-            approvedAt: new Date(),
-            remarks: remark,
-          },
+          status: 'rejected',
+          approverId,
+          remarks: remark,
         });
         return res
           .status(200)
@@ -171,7 +168,7 @@ export class OrgController {
         ok: commitOk,
         status: commitStatus,
       } = await internalPost(
-        `${config.backendUrl}/internal/org/approve-commit`,
+        `${config.backendUrl}/internal/org/action`,
         {
           id,
           approverId,
@@ -236,12 +233,12 @@ export class OrgController {
           newNodeName: reqData.newNodeName,
           nodeType: reqData.nodeType,
           parentNode: reqData.parentNode,
-          initiatorName: req.initiator?.name || 'N/A',
-          initiatorEmail: req.initiator?.email || 'N/A',
+          initiatorName: req.initiator?.name || null,
+          initiatorEmail: req.initiator?.email || null,
           initiatedDate: OrgController.formatDate(req.createdAt),
-          approverName: req.approver?.name || 'N/A',
-          approverEmail: req.approver?.email || 'N/A',
-          approvedDate: req.approvedAt ? OrgController.formatDate(req.approvedAt) : 'N/A',
+          approverName: req.approver?.name || null,
+          approverEmail: req.approver?.email || null,
+          approvedDate: req.approvedAt ? OrgController.formatDate(req.approvedAt) : null,
         };
       });
 

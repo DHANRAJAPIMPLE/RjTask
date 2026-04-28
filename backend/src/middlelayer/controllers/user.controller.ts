@@ -21,10 +21,10 @@ export class UserController {
   static async fetchAllUsers(req: Request, res: Response, next: NextFunction) {
     try {
       // 1. Fetch raw data from Backend (5001)
-      const body = req.body;
+      const { companyCode } = req.body;
       const { data, ok, status } = await internalPost<any>(
         `${config.backendUrl}/internal/user/fetch-all`,
-          body.companyCode
+        { companyCode }
       );
 
       if (!ok) {
@@ -73,6 +73,12 @@ export class UserController {
               createdAt: UserController.formatDate(u.createdAt),
               designation: 'N/A',
               reportingManager: 'N/A',
+              initiatorName: null,
+              initiatorEmail: null,
+              initiatedDate: null,
+              approverName: null,
+              approverEmail: null,
+              approvedDate: null,
             },
             primary: primaryRoles,
             secondary: secondaryRoles,
@@ -113,6 +119,12 @@ export class UserController {
                 createdAt: UserController.formatDate(m.createdAt),
                 designation: m.designation,
                 reportingManager: m.manager?.email || 'N/A',
+                initiatorName: null,
+                initiatorEmail: null,
+                initiatedDate: null,
+                approverName: null,
+                approverEmail: null,
+                approvedDate: null,
               },
               primary: primaryRoles,
               secondary: secondaryRoles,
@@ -163,12 +175,12 @@ export class UserController {
             createdAt: UserController.formatDate(onb.createdAt),
             designation: basic.designation || 'N/A',
             reportingManager: basic.reportingManager || 'N/A',
-            initiatorName: onb.initiator?.name || 'N/A',
-            initiatorEmail: onb.initiator?.email || 'N/A',
+            initiatorName: onb.initiator?.name || null,
+            initiatorEmail: onb.initiator?.email || null,
             initiatedDate: UserController.formatDate(onb.createdAt),
-            approverName: onb.approver?.name || 'N/A',
-            approverEmail: onb.approver?.email || 'N/A',
-            approvedDate: onb.approvedAt ? UserController.formatDate(onb.approvedAt) : 'N/A',
+            approverName: onb.approver?.name || null,
+            approverEmail: onb.approver?.email || null,
+            approvedDate: onb.approvedAt ? UserController.formatDate(onb.approvedAt) : null,
           },
           primary,
           secondary,
@@ -321,22 +333,7 @@ export class UserController {
         );
       }
 
-      // 4. Handle rejection
-      if (action === 'reject') {
-        await internalPost(
-          `${config.backendUrl}/internal/onboarding/user/update-status`,
-          {
-            id,
-            data: {
-              status: 'rejected',
-              approverId,
-              approvedAt: new Date(),
-              approvalRemark: remark,
-            },
-          },
-        );
-        return res.status(200).json({ message: 'User onboarding rejected' });
-      }
+     
 
       // 5. Handle approval (Commit to Backend Transaction)
       const {
@@ -344,8 +341,8 @@ export class UserController {
         ok: commitOk,
         status: commitStatus,
       } = await internalPost(
-        `${config.backendUrl}/internal/onboarding/user/approve-commit`,
-        { id, approverId, remark },
+        `${config.backendUrl}/internal/onboarding/user/action`,
+        { id, approverId, remark , status:action},
       );
 
       if (!commitOk) {
@@ -372,7 +369,7 @@ export class UserController {
 
       // 1. Fetch user by email
       const { data: user, ok } = await internalPost<any>(
-        `${config.backendAuthUrl}/get-by-email`,
+        `${config.backendAuthUrl}/get-user`,
         { email },
       );
 

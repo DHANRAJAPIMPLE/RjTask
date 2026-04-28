@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth.routes';
-import companyRoutes from './routes/company.routes';
+import companyRoutes from './routes/company-setting.routes';
 import adminRoutes from './routes/admin.routes';
 import { createErrorMiddleware } from '../shared/middlewares/error.middleware';
 const allowedOrigins = ['http://localhost:8080', 'http://192.168.1.7:8080'];

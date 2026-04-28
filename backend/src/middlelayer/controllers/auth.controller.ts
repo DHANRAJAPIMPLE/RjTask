@@ -16,7 +16,7 @@ export class AuthController {
 
       // 1. Check if user already exists
       const existingUserRes = await internalPost<any>(
-        `${config.backendAuthUrl}/get-by-email`,
+        `${config.backendAuthUrl}/get-user`,
         { email },
       );
       if (existingUserRes.status !== 404) {
@@ -70,7 +70,7 @@ export class AuthController {
 
       // 1. Get user from Backend DB
       const userRes = await internalPost<any>(
-        `${config.backendAuthUrl}/get-by-email`,
+        `${config.backendAuthUrl}/get-user`,
         { email },
       );
       const user = userRes.data;
@@ -87,7 +87,7 @@ export class AuthController {
 
       // 3. Get existing activity
       const activityRes = await internalPost<any>(
-        `${config.backendAuthUrl}/activity/get`,
+        `${config.backendAuthUrl}/get-user-activity`,
         { userId: user.id },
       );
       const existingActivity = activityRes.data;
@@ -202,12 +202,12 @@ export class AuthController {
 
       if (userId) {
         activityRes = await internalPost<any>(
-          `${config.backendAuthUrl}/activity/get`,
+          `${config.backendAuthUrl}/get-user-activity`,
           { userId },
         );
       } else {
         activityRes = await internalPost<any>(
-          `${config.backendAuthUrl}/activity/get-by-token`,
+          `${config.backendAuthUrl}/get-user-activity`,
           { refreshTokenHash },
         );
       }
@@ -284,7 +284,7 @@ export class AuthController {
         data: user,
         ok,
         status,
-      } = await internalPost<any>(`${config.backendAuthUrl}/get-by-id`, {
+      } = await internalPost<any>(`${config.backendAuthUrl}/get-user`, {
         userId,
       });
 

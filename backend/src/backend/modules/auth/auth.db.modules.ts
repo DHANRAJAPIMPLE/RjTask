@@ -2,11 +2,20 @@ import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../lib/prisma';
 
 export class AuthDbController {
-  static async getById(req: Request, res: Response, next: NextFunction) {
+  static async getByUser(req: Request, res: Response, next: NextFunction) {
     try {
-      const { userId } = req.body;
+       const { userId, email } = req.body;
+
+    if (!userId && !email) {
+      return res.status(400).json({ error: 'userId or email is required' });
+    }
+
+    const whereCondition = userId
+      ? { id: userId }
+      : { email: email };
+
       const user = await prisma.user.findUnique({
-        where: { id: userId },
+       where:whereCondition,
         include: {
           userMappings: {
             include: {
@@ -34,59 +43,50 @@ export class AuthDbController {
     }
   }
 
-  static async getByEmail(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { email } = req.body;
-      const user = await prisma.user.findUnique({
-        where: { email },
-        include: {
-          userMappings: {
-            include: {
-              company: {
-                include: {
-                  companyMappings: {
-                    include: {
-                      group: true,
-                    },
-                  },
-                },
-              },
-            },
+
+static async getActivity(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const { userId, refreshTokenHash } = req.body;
+
+    if (!userId && !refreshTokenHash) {
+      return res.status(400).json({
+        error: 'userId or refreshTokenHash is required',
+      });
+    }
+
+    const activity = await prisma.userActivity.findFirst({
+      where: {
+        OR: [
+          userId ? { userId } : undefined,
+          refreshTokenHash ? { refreshToken: refreshTokenHash } : undefined,
+        ].filter(Boolean) as any,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
           },
         },
-      });
+      },
+    });
 
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      res.status(200).json(user);
-    } catch (error) {
-      next(error);
+    if (!activity) {
+      return res.status(404).json({ error: 'Activity not found' });
     }
-  }
 
-  static async getActivity(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { userId } = req.body;
-      const activity = await prisma.userActivity.findFirst({
-        where: { userId },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-            },
-          },
-        },
-      });
-      res.status(200).json(activity);
-    } catch (error) {
-      next(error);
-    }
+    res.status(200).json(activity);
+  } catch (error) {
+    next(error);
   }
+}
+
 
   static async upsertActivity(req: Request, res: Response, next: NextFunction) {
     try {
@@ -117,32 +117,7 @@ export class AuthDbController {
     }
   }
 
-  static async getActivityByToken(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ) {
-    try {
-      const { refreshTokenHash } = req.body;
-      const activity = await prisma.userActivity.findFirst({
-        where: { refreshToken: refreshTokenHash },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-            },
-          },
-        },
-      });
-      res.status(200).json(activity);
-    } catch (error) {
-      next(error);
-    }
-  }
-
+  
   static async deleteActivity(req: Request, res: Response, next: NextFunction) {
     try {
       const { refreshTokenHash } = req.body;

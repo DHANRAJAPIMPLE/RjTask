@@ -49,6 +49,12 @@ export class AdminController {
             iecode: cm.company.iecode || '',
             registration: AdminController.formatDate(cm.company.registrationDate),
             address: cm.company.address || '',
+            initiatorName: cm.company.initiator?.name || null,
+            initiatorEmail: cm.company.initiator?.email || null,
+            initiatedDate: cm.company.createdAt ? AdminController.formatDate(cm.company.createdAt) : null,
+            approverName: cm.company.approver?.name || null,
+            approverEmail: cm.company.approver?.email || null,
+            approvedDate: cm.company.approvedAt ? AdminController.formatDate(cm.company.approvedAt) : null,
           })),
           signatories: [] as any[],
         };
@@ -95,6 +101,12 @@ export class AdminController {
               iecode: c.iecode || '',
               registration: AdminController.formatDate(c.registrationDate),
               address: c.address || '',
+              initiatorName: c.initiator?.name || null,
+              initiatorEmail: c.initiator?.email || null,
+              initiatedDate: c.createdAt ? AdminController.formatDate(c.createdAt) : null,
+              approverName: c.approver?.name || null,
+              approverEmail: c.approver?.email || null,
+              approvedDate: c.approvedAt ? AdminController.formatDate(c.approvedAt) : null,
             },
           ],
           signatories: (c.userMappings || []).map((um: any) => ({
@@ -143,12 +155,12 @@ export class AdminController {
             ? AdminController.formatDate(company.registeredAt)
             : '',
           address: company.address || '',
-          initiatorName: onb.initiator?.name || 'N/A',
-          initiatorEmail: onb.initiator?.email || 'N/A',
+          initiatorName: onb.initiator?.name || null,
+          initiatorEmail: onb.initiator?.email || null,
           initiatedDate: AdminController.formatDate(onb.createdAt),
-          approverName: onb.approver?.name || 'N/A',
-          approverEmail: onb.approver?.email || 'N/A',
-          approvedDate: onb.approvedAt ? AdminController.formatDate(onb.approvedAt) : 'N/A',
+          approverName: onb.approver?.name || null,
+          approverEmail: onb.approver?.email || null,
+          approvedDate: onb.approvedAt ? AdminController.formatDate(onb.approvedAt) : null,
         });
 
         // Add signatories if not already there
